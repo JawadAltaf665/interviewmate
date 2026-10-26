@@ -127,4 +127,6 @@ Electron 45 · Angular 22 (standalone components, signals) · TypeScript · SCSS
 
 This is a personal learning project, built and used by one person on Windows 10/11. It is not affiliated with Google. Gemini free-tier limits apply, and Google may use free-tier content to improve its products (see [Privacy and security](docs/PRIVACY_AND_SECURITY.md)).
 
-No licence has been chosen yet, so all rights are reserved by the author. Open an issue if you would like to use the code.
+## Licence
+
+Released under the [MIT License](LICENSE). You are free to use, change and share the code, as long as the copyright notice stays with it.

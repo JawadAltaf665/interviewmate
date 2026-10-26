@@ -17,6 +17,7 @@
     }
   },
   "description": "InterviewMate — local-first AI mock-interview desktop app (personal learning project)",
+  "license": "MIT",
   "main": "electron/main.cjs",
   "name": "interviewmate",
   "private": true,

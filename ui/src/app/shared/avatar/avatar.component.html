@@ -1,0 +1,26 @@
+<div class="avatar-wrap" [attr.data-state]="state" role="img"
+     [attr.aria-label]="'AI interviewer avatar: ' + stateLabel()">
+  <div class="ring" aria-hidden="true"></div>
+  <svg class="avatar" viewBox="0 0 200 200" aria-hidden="true">
+    <circle class="bg" cx="100" cy="100" r="96" />
+    <g class="figure">
+      <!-- shoulders / jacket -->
+      <path class="jacket" d="M30 200 C30 158 62 138 100 138 C138 138 170 158 170 200 Z" />
+      <path class="shirt" d="M84 142 L100 168 L116 142 L108 138 L100 150 L92 138 Z" />
+      <!-- neck -->
+      <rect class="skin" x="90" y="112" width="20" height="30" rx="8" />
+      <!-- head -->
+      <g class="head">
+        <ellipse class="skin" cx="100" cy="82" rx="40" ry="44" />
+        <path class="hair" d="M60 78 C58 44 76 30 100 30 C124 30 142 44 140 78 C134 58 122 48 100 48 C78 48 66 58 60 78 Z" />
+        <circle class="eye" cx="85" cy="84" r="3.6" />
+        <circle class="eye" cx="115" cy="84" r="3.6" />
+        <path class="brow" d="M76 72 Q85 68 94 72" />
+        <path class="brow" d="M106 72 Q115 68 124 72" />
+        <ellipse class="mouth" cx="100" cy="106" rx="9" ry="3" />
+      </g>
+    </g>
+  </svg>
+  <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+  <p class="state-label">{{ stateLabel() }}</p>
+</div>

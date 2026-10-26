@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+ui/node_modules/
+
+# Builds
+ui/dist/
+dist/
+out/
+release/
+
+# Electron user data / local app data
+*.log
+
+# Secrets — NEVER commit credentials (brief §9/§12)
+.env
+.env.*
+!.env.example
+*credentials*.json
+*api-key*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!ui/.vscode/extensions.json
+
+# Angular cache, exported reports, packaged builds
+ui/.angular/
+.angular/
+*.pdf
+*.zip
+*.7z
+InterviewMate-Windows-Portable-*/

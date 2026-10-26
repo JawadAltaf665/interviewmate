@@ -1,0 +1,44 @@
+{
+  "build": {
+    "appId": "local.interviewmate.app",
+    "files": [
+      "electron/**/*",
+      "ui/dist/**/*",
+      "package.json"
+    ],
+    "nsis": {
+      "allowToChangeInstallationDirectory": true,
+      "oneClick": false
+    },
+    "productName": "InterviewMate",
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false
+    }
+  },
+  "description": "InterviewMate — local-first AI mock-interview desktop app (personal learning project)",
+  "main": "electron/main.cjs",
+  "name": "interviewmate",
+  "private": true,
+  "scripts": {
+    "build:ui": "npm --prefix ui run build -- --base-href ./",
+    "dev": "concurrently -k \"npm run dev:ui\" \"wait-on http://localhost:4200 && cross-env ELECTRON_RENDERER_URL=http://localhost:4200 electron .\"",
+    "dev:ui": "npm --prefix ui start",
+    "dist:win": "npm run build:ui && electron-builder --win nsis",
+    "setup": "npm install && npm --prefix ui install",
+    "smoke": "npm run build:ui && cross-env INTERVIEWMATE_SMOKE=1 electron .",
+    "start": "npm run build:ui && electron .",
+    "test:electron": "node --test \"electron/**/*.test.cjs\"",
+    "test:ui": "npm --prefix ui test -- --watch=false",
+    "test": "npm run test:electron && npm run test:ui",
+    "verify": "npm test && npm run build:ui"
+  },
+  "version": "1.10.0",
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "wait-on": "^9.5.1"
+  }
+}

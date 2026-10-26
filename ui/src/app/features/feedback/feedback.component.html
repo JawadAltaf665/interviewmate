@@ -1,0 +1,199 @@
+<main class="page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Results</p>
+      <h1>Interview feedback</h1>
+      <p class="lede">Coaching estimates from your actual transcript — never a hiring decision.</p>
+    </div>
+    @if (session()) {
+      <div class="row">
+        <a class="btn secondary" routerLink="/setup">New interview</a>
+        <button class="btn" type="button" (click)="save()" [disabled]="saved() || loading()">
+          {{ saved() ? 'Session saved' : 'Save session' }}
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (!session()) {
+    <section class="card empty-state">
+      <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg></span>
+      <p class="m-0 font-semibold text-[var(--text)]">No completed interview yet</p>
+      <p class="small mt-1 mb-4">Finish a mock interview and your feedback will show up here.</p>
+      <a class="btn" routerLink="/setup">Start a mock interview</a>
+    </section>
+  } @else {
+    @if (!saved() && !loading()) {
+      <p class="notice warn" role="status">Not saved yet — starting a new interview replaces this result. Press <strong>Save session</strong> to keep it in your saved interviews below.</p>
+    }
+    @if (saveError()) { <p class="notice error" role="alert">{{ saveError() }}</p> }
+    @if (session()!.transcript.length === 0 || userAnswers === 0) {
+      <p class="notice warn" role="alert">
+        Feedback is limited: little or no transcript was captured for this session, so answer quality
+        cannot be assessed. Nothing below invents answers you did not give.
+      </p>
+    }
+    @if (loading()) { <p class="notice" role="status">Generating feedback from your transcript…</p> }
+    @if (sourceNote()) {
+      <p class="notice" [class.ok]="source() === 'gemini'" role="status">
+        <strong>{{ source() === 'gemini' ? 'Gemini feedback.' : 'Local feedback.' }}</strong> {{ sourceNote() }}
+      </p>
+    }
+
+    @if (feedback(); as fb) {
+      <section class="card overview">
+        @if (fb.scores.length) {
+          <div class="ring" [style.--p]="overall()">
+            <span class="ring-value">{{ overall() }}</span>
+            <span class="ring-label">Overall</span>
+          </div>
+        }
+        <div class="overview-body">
+          <h2>Summary</h2>
+          <p class="muted m-0" dir="auto">{{ fb.summary }}</p>
+          @if (fb.scores.length) {
+            <div class="scores">
+              @for (s of fb.scores; track s.label) {
+                <div class="score">
+                  <div class="score-head"><span>{{ s.label }}</span><strong>{{ s.score }}</strong></div>
+                  <div class="score-track"><div class="score-fill" [style.width.%]="s.score"></div></div>
+                  <p class="small muted m-0" dir="auto">{{ s.explanation }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <div class="two-col">
+        <section class="card">
+          <h2><span class="tag ok">+</span>Strengths</h2>
+          @if (fb.strengths.length) {
+            <ul class="list">@for (item of fb.strengths; track $index) { <li dir="auto">{{ item }}</li> }</ul>
+          } @else { <p class="muted small">No specific strengths could be identified from this transcript.</p> }
+        </section>
+        <section class="card">
+          <h2><span class="tag warn">↑</span>Areas to improve</h2>
+          @if (fb.improvements.length) {
+            <ul class="list">@for (item of fb.improvements; track $index) { <li dir="auto">{{ item }}</li> }</ul>
+          } @else { <p class="muted small">No specific improvements could be identified from this transcript.</p> }
+        </section>
+      </div>
+
+      @if (fb.practiceQuestions.length) {
+        <section class="card">
+          <h2>Suggested practice questions</h2>
+          <ol class="practice">@for (q of fb.practiceQuestions; track $index) { <li dir="auto">{{ q }}</li> }</ol>
+        </section>
+      }
+    }
+
+    @if (session()!.coachingNotes.length) {
+      <section class="card">
+        <h2>Webcam coaching notes</h2>
+        <ul class="list">@for (n of session()!.coachingNotes; track $index) { <li>{{ n }}</li> }</ul>
+      </section>
+    }
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Transcript <span class="badge ml-1">{{ session()!.transcript.length }} turns</span></h2>
+        @if (session()!.transcript.length) {
+          <div class="segmented" role="group" aria-label="Transcript language">
+            <button type="button" [class.on]="transcriptView() === 'English'" (click)="showTranscriptIn('English')" [disabled]="translating()">English</button>
+            <button type="button" [class.on]="transcriptView() === 'Urdu'" (click)="showTranscriptIn('Urdu')" [disabled]="translating()" lang="ur">اردو</button>
+            <button type="button" [class.on]="transcriptView() === 'original'" (click)="showTranscriptIn('original')" [disabled]="translating()">Original</button>
+          </div>
+        }
+      </div>
+      @if (translating()) { <p class="notice" role="status">Translating transcript…</p> }
+      @if (translateError()) { <p class="notice warn" role="alert">{{ translateError() }}</p> }
+      @if (!session()!.transcript.length) {
+        <p class="muted small m-0">No transcript was captured.</p>
+      } @else {
+        <ol class="transcript" [class.urdu]="transcriptView() === 'Urdu'">
+          @for (entry of shownTranscript(); track $index) {
+            <li [class.user]="entry.speaker === 'user'">
+              <span class="who">{{ entry.speaker === 'interviewer' ? (session()!.interviewerName || 'Interviewer') : 'You' }}</span>
+              <span dir="auto">{{ entry.text }}</span>
+            </li>
+          }
+        </ol>
+      }
+      <p class="hint mt-3 mb-0">Sessions are stored locally only when you press Save. Nothing was saved automatically.</p>
+    </section>
+  }
+
+  <section class="card history">
+    <div class="card-head">
+      <h2>Saved interviews <span class="badge ml-1">{{ pastSessions().length }}</span></h2>
+    </div>
+    @if (historyError()) { <p class="notice error" role="alert">{{ historyError() }}</p> }
+    @if (!pastSessions().length) {
+      <p class="muted small m-0">Interviews you save appear here and stay until you remove them.</p>
+    } @else {
+      <div class="history-list">
+        @for (s of pastSessions(); track s.id) {
+          <details class="history-item">
+            <summary>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+              <span class="h-score" [class.none]="!s.feedback?.scores?.length">{{ s.feedback?.scores?.length ? overall(s.feedback) : '—' }}</span>
+              <span class="h-main">
+                <span class="h-title">{{ s.title || 'Mock interview' }}</span>
+                <span class="muted small">{{ s.date | date: 'medium' }} · {{ (s.durationSec / 60).toFixed(0) }} min · {{ s.language || 'English' }}</span>
+              </span>
+              <span class="badge capitalize">{{ s.level }}</span>
+              @if (pendingRemove() === s.id) {
+                <span class="h-confirm" (click)="$event.preventDefault()">
+                  <button class="btn small danger" type="button" (click)="remove(s.id)">Remove</button>
+                  <button class="btn small secondary" type="button" (click)="pendingRemove.set(null)">Cancel</button>
+                </span>
+              } @else {
+                <button class="btn small danger" type="button" (click)="$event.preventDefault(); pendingRemove.set(s.id)" title="Remove this saved interview">Remove</button>
+              }
+            </summary>
+            <div class="h-body">
+              @if (s.feedback; as fb) {
+                <p class="muted mt-0" dir="auto">{{ fb.summary }}</p>
+                @if (fb.scores.length) {
+                  <div class="scores mt-0 mb-4">
+                    @for (sc of fb.scores; track sc.label) {
+                      <div class="score">
+                        <div class="score-head"><span>{{ sc.label }}</span><strong>{{ sc.score }}</strong></div>
+                        <div class="score-track"><div class="score-fill" [style.width.%]="sc.score"></div></div>
+                      </div>
+                    }
+                  </div>
+                }
+                <div class="two-col mb-4">
+                  <div>
+                    <h3><span class="tag ok">+</span>Strengths</h3>
+                    <ul class="list">@for (item of fb.strengths; track $index) { <li dir="auto">{{ item }}</li> } @empty { <li>None noted.</li> }</ul>
+                  </div>
+                  <div>
+                    <h3><span class="tag warn">↑</span>Areas to improve</h3>
+                    <ul class="list">@for (item of fb.improvements; track $index) { <li dir="auto">{{ item }}</li> } @empty { <li>None noted.</li> }</ul>
+                  </div>
+                </div>
+                <p class="hint mt-0">{{ s.feedbackSource === 'local' ? 'Local heuristic feedback.' : 'Gemini feedback.' }}</p>
+              } @else {
+                <p class="notice">This interview was saved before feedback was stored with sessions — only the transcript is available.</p>
+              }
+              <details class="h-transcript">
+                <summary>Transcript ({{ s.transcript.length }} turns)</summary>
+                <ol class="transcript" [class.urdu]="s.transcriptLanguage === 'Urdu' && !!s.translations?.Urdu">
+                  @for (entry of savedTranscript(s); track $index) {
+                    <li [class.user]="entry.speaker === 'user'">
+                      <span class="who">{{ entry.speaker === 'interviewer' ? (s.interviewerName || 'Interviewer') : 'You' }}</span>
+                      <span dir="auto">{{ entry.text }}</span>
+                    </li>
+                  } @empty { <li>No transcript was captured.</li> }
+                </ol>
+              </details>
+            </div>
+          </details>
+        }
+      </div>
+    }
+  </section>
+</main>

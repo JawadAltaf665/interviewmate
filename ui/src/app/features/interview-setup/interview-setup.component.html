@@ -1,0 +1,243 @@
+<main class="page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">New interview</p>
+      <h1>Set up your mock interview</h1>
+      <p class="lede">Choose a level and mode, optionally add your CV so questions stay grounded in it, then test your devices.</p>
+    </div>
+    <ol class="stepper" aria-label="Interview steps">
+      <li class="current"><span>1</span>Setup</li>
+      <li><span>2</span>Interview</li>
+      <li><span>3</span>Feedback</li>
+    </ol>
+  </div>
+
+  @if (state.live()) {
+    <p class="notice warn" role="status">An interview is running right now. <a class="ml-1" routerLink="/interview">Return to it</a> — you can still schedule another one here.</p>
+  }
+  @if (formError()) { <p class="notice error" role="alert">{{ formError() }}</p> }
+
+  <div class="setup-grid">
+    <div>
+      <section class="card">
+        <h2><span class="step-num">1</span>Interview level</h2>
+        <div class="radio-cards" role="radiogroup" aria-label="Interview level">
+          @for (opt of levels; track opt.value) {
+            <button type="button" class="radio-card" role="radio" [attr.aria-checked]="level() === opt.value" (click)="level.set(opt.value)">
+              <span class="rc-title">{{ opt.title }}</span>
+              <span class="rc-desc">{{ opt.desc }}</span>
+            </button>
+          }
+        </div>
+      </section>
+
+      <section class="card">
+        <h2><span class="step-num">2</span>Interview mode</h2>
+        <div class="radio-cards" role="radiogroup" aria-label="Interview mode">
+          @for (opt of modes; track opt.value) {
+            <button type="button" class="radio-card" role="radio" [attr.aria-checked]="mode() === opt.value" (click)="mode.set(opt.value)">
+              <span class="rc-title">{{ opt.title }}</span>
+              <span class="rc-desc">{{ opt.desc }}</span>
+            </button>
+          }
+        </div>
+        @if (mode() === 2) {
+          <div class="field consent">
+            <label class="check-row">
+              <input type="checkbox" [ngModel]="coachingConsent()" (ngModelChange)="coachingConsent.set($event)" name="consent" />
+              <span>I consent to still webcam frames being captured periodically and sent to Google's API for presentation analysis during this interview.</span>
+            </label>
+            <p class="hint">Feedback is limited to framing, lighting, face-in-frame and approximate gaze direction. Frames are not saved. A "Camera analysis ON" badge stays visible and you can pause it at any time.</p>
+          </div>
+        }
+      </section>
+
+      <section class="card">
+        <h2><span class="step-num">3</span>CV / resume <span class="muted small">(optional)</span></h2>
+        @if (!cvFileName()) {
+          <label class="dropzone" for="cv-file">
+            <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></span>
+            <span class="font-semibold">Upload a PDF or DOCX</span>
+            <span class="hint">Max 5 MB · text is extracted on this device</span>
+            <input id="cv-file" type="file" accept=".pdf,.docx" (change)="onCvFile($event)" />
+          </label>
+          @if (cvBusy()) { <p class="hint">Extracting text…</p> }
+          <div class="field mt-4">
+            <label for="paste">…or paste CV text</label>
+            <textarea id="paste" [ngModel]="pasteText()" (ngModelChange)="pasteText.set($event)" name="pasteText" placeholder="Paste your CV text here"></textarea>
+            <button class="btn secondary small" type="button" (click)="usePastedText()">Use pasted text</button>
+          </div>
+          <p class="notice">
+            <strong>General mode:</strong> without a CV, the interviewer asks general questions for your role and level.
+            It will not assume you have any particular skill.
+          </p>
+          <div class="field">
+            <label for="general-skills">Skills you want to practise <span class="muted">(optional)</span></label>
+            <input id="general-skills" type="text" [ngModel]="generalSkills()" (ngModelChange)="generalSkills.set($event)" name="generalSkills" placeholder="e.g. Angular, TypeScript, SQL" />
+          </div>
+        } @else {
+          <div class="cv-file">
+            <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></span>
+            <strong class="flex-1 truncate">{{ cvFileName() }}</strong>
+            <span class="badge on"><span class="dot"></span>CV attached</span>
+            <button class="btn secondary small" type="button" (click)="removeCv()">Remove</button>
+          </div>
+          <div class="field">
+            <span class="label">Detected skills</span>
+            @if (summarySkills().length) {
+              <div class="chips">@for (s of summarySkills(); track s) { <span class="chip">{{ s }}</span> }</div>
+            } @else { <p class="hint">No known skills detected.</p> }
+          </div>
+          @if (summaryProjects().length) {
+            <div class="field">
+              <span class="label">Detected projects</span>
+              <ul class="projects">@for (p of summaryProjects(); track p) { <li>{{ p }}</li> }</ul>
+            </div>
+          }
+          <div class="field">
+            <label for="summary">Confirmed CV summary</label>
+            <textarea id="summary" [ngModel]="summaryText()" (ngModelChange)="summaryText.set($event)" name="summaryText"></textarea>
+            <p class="hint">Review and edit — the interviewer may only ask about what is written here.</p>
+          </div>
+        }
+        @if (cvError()) { <p class="notice warn" role="alert">{{ cvError() }}</p> }
+      </section>
+
+      <section class="card">
+        <h2><span class="step-num">4</span>Preferences</h2>
+        <div class="grid gap-x-4 sm:grid-cols-2">
+          <div class="field">
+            <label for="candidateName">Your name <span class="muted">(optional)</span></label>
+            <input id="candidateName" type="text" maxlength="60" [ngModel]="candidateName()" (ngModelChange)="candidateName.set($event)" name="candidateName" placeholder="Taken from your CV, or type it" />
+            <p class="hint">The interviewer greets you by name. Leave empty for a general "Hey there".</p>
+          </div>
+          <div class="field">
+            <label for="role">Target role <span class="muted">(optional)</span></label>
+            <input id="role" type="text" [ngModel]="role()" (ngModelChange)="role.set($event)" name="role" placeholder="e.g. Junior Angular Developer" />
+          </div>
+        </div>
+        <div class="grid gap-x-4 sm:grid-cols-2">
+          <div class="field">
+            <label for="language">Interview language</label>
+            <select id="language" [ngModel]="language()" (ngModelChange)="language.set($event); transcriptLanguage.set($event)" name="language">
+              <option value="English">English</option>
+              <option value="Urdu">Urdu (اردو)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="transcriptLanguage">Transcript &amp; feedback language</label>
+            <select id="transcriptLanguage" [ngModel]="transcriptLanguage()" (ngModelChange)="transcriptLanguage.set($event)" name="transcriptLanguage">
+              <option value="English">English</option>
+              <option value="Urdu">Urdu (اردو)</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint -mt-2 mb-4">Spoken Urdu is often mixed with English. After the interview the transcript is translated into the transcript language — you can switch between English and Urdu on the feedback page.</p>
+        <div class="field">
+          <span class="label">When you finish an answer</span>
+          <div class="radio-cards" role="radiogroup" aria-label="Answer mode">
+            <button type="button" class="radio-card" role="radio" [attr.aria-checked]="answerMode() === 'auto'" (click)="answerMode.set('auto')">
+              <span class="rc-title">Automatic</span>
+              <span class="rc-desc">The interviewer replies after you pause — or press Space / Enter to send your answer right away.</span>
+            </button>
+            <button type="button" class="radio-card" role="radio" [attr.aria-checked]="answerMode() === 'manual'" (click)="answerMode.set('manual')">
+              <span class="rc-title">I'll press "Done answering"</span>
+              <span class="rc-desc">The interviewer never cuts in. Press the button (or Space / Enter) when your answer is complete.</span>
+            </button>
+          </div>
+          @if (answerMode() === 'auto') {
+            <label for="pauseSec" class="mt-3">Pause before the interviewer replies</label>
+            <select id="pauseSec" [ngModel]="pauseSec()" (ngModelChange)="pauseSec.set(+$event)" name="pauseSec">
+              <option [value]="1.5">1.5 seconds — quick back-and-forth</option>
+              <option [value]="2.5">2.5 seconds — recommended</option>
+              <option [value]="4">4 seconds — I pause to think</option>
+            </select>
+          }
+        </div>
+        @if (cvFileName()) { <p class="hint -mt-2 mb-4">The role guides tone only — with a CV attached, questions still come only from the CV summary.</p> }
+        <div class="field">
+          <label for="duration">Duration</label>
+          <select id="duration" [ngModel]="durationMin()" (ngModelChange)="durationMin.set(+$event)" name="duration">
+            <option [value]="10">10 minutes</option>
+            <option [value]="15">15 minutes</option>
+            <option [value]="20">20 minutes</option>
+            <option [value]="30">30 minutes</option>
+          </select>
+          <p class="hint">A single Gemini Live audio session is capped at about 15 minutes; longer interviews continue automatically via session resumption.</p>
+        </div>
+        <div class="field mb-0">
+          <label class="check-row">
+            <input type="checkbox" [ngModel]="simulation()" (ngModelChange)="simulation.set($event)" name="simulation" />
+            <span>Simulation mode (no API key, local only)</span>
+          </label>
+          <p class="hint">Local questions with your device's speech features. Good for a dry run — it is <strong>not</strong> Gemini.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2><span class="step-num">5</span>Microphone, camera &amp; background</h2>
+        <div class="row">
+          <button class="btn secondary" type="button" (click)="testMic()">Test microphone</button>
+          @if (!camOn()) {
+            <button class="btn secondary" type="button" (click)="testCamera()">Start camera preview</button>
+          } @else {
+            <button class="btn secondary" type="button" (click)="stopTestTracks()">Stop camera</button>
+          }
+        </div>
+        @if (micStatus()) { <p class="hint" role="status">{{ micStatus() }}</p> }
+        @if (camStatus()) { <p class="hint" role="status">{{ camStatus() }}</p> }
+        <div class="cam-test">
+          <div class="cam-box">
+            <video #camPreview class="cam-preview" [hidden]="vbg.active()" autoplay muted playsinline aria-label="Camera test preview"></video>
+            <canvas #camCanvas class="cam-preview" [hidden]="!vbg.active()" aria-label="Camera preview with background effect"></canvas>
+            @if (!camOn()) { <span class="cam-empty">Camera off</span> }
+          </div>
+          <div class="min-w-0 flex-1">
+            <span class="label font-semibold text-[0.85rem]">Background</span>
+            <p class="hint mt-0 mb-3">Like Teams: blur, a colour or your own image. Processed on this device only, and kept for the interview.</p>
+            <app-bg-picker />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="card summary">
+      <h2>Interview summary</h2>
+      <dl>
+        <div><dt>Name</dt><dd>{{ candidateName().trim() || '—' }}</dd></div>
+        <div><dt>Level</dt><dd class="capitalize">{{ level() }}</dd></div>
+        <div><dt>Mode</dt><dd>{{ mode() === 1 ? 'Voice + preview' : 'Voice + coaching' }}</dd></div>
+        <div><dt>CV</dt><dd>{{ cvFileName() ? 'Attached' : 'General mode' }}</dd></div>
+        <div><dt>Duration</dt><dd>{{ durationMin() }} min</dd></div>
+        <div><dt>Language</dt><dd>{{ language() }}</dd></div>
+        <div><dt>Transcript</dt><dd>{{ transcriptLanguage() }}</dd></div>
+        <div><dt>Answers end</dt><dd>{{ answerMode() === 'manual' ? 'On "Done"' : pauseSec() + 's pause' }}</dd></div>
+        <div><dt>Engine</dt><dd>{{ simulation() ? 'Simulation' : 'Gemini Live' }}</dd></div>
+      </dl>
+      <div class="when">
+        <span class="when-label">When</span>
+        <div class="segmented" role="group" aria-label="When">
+          <button type="button" [class.on]="when() === 'now'" (click)="when.set('now')">Start now</button>
+          <button type="button" [class.on]="when() === 'later'" (click)="when.set('later')">Schedule for later</button>
+        </div>
+        @if (when() === 'later') {
+          <input id="scheduleAt" type="datetime-local" aria-label="Interview date and time" [value]="scheduleAt()" [min]="minScheduleAt" (input)="scheduleAt.set($any($event.target).value)" />
+        }
+      </div>
+      <button class="btn large start-btn" type="button" (click)="start()" [disabled]="scheduling()">
+        @if (when() === 'later') {
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M12 14v4M10 16h4"/></svg>
+          {{ scheduling() ? 'Scheduling…' : 'Schedule interview' }}
+        } @else {
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>
+          Start interview
+        }
+      </button>
+      @if (when() === 'later') {
+        <p class="hint text-center">You'll get a reminder 10 minutes before and at that time while InterviewMate is open.</p>
+      } @else {
+        <p class="hint text-center">You'll grant mic access on the next screen.</p>
+      }
+    </aside>
+  </div>
+</main>

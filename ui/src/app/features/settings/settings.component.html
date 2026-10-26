@@ -1,0 +1,157 @@
+<main class="page settings">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Settings</p>
+      <h1>Settings</h1>
+      <p class="lede">Gemini API keys, usage controls and privacy. Keys are managed by the desktop app only.</p>
+    </div>
+  </div>
+
+  @if (message()) { <p class="notice ok" role="status">{{ message() }}</p> }
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+
+  <section class="card">
+    <div class="section">
+      <div class="section-intro">
+        <h2>API keys</h2>
+        <p class="muted small">
+          Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+          Quotas are per <strong>Google project</strong>, not per key — keys in the same project share one quota pool.
+        </p>
+      </div>
+      <div class="section-body">
+        @if (appInfo() && !appInfo()!.safeStorageAvailable) {
+          <p class="notice warn" role="alert">
+            OS secure storage (Electron safeStorage) is <strong>not available</strong> on this system, so keys cannot be
+            stored as safely as designed. The app will refuse or warn before saving a key.
+          </p>
+        }
+        @if (!bridge.isDesktop()) {
+          <p class="notice warn">Key management needs the desktop app. In this browser preview the list is empty and adding keys is disabled.</p>
+        }
+
+        @if (credentials().length === 0) {
+          <div class="empty-key">
+            <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14 9l2 2"/></svg></span>
+            <span class="muted small">No keys saved yet — add your first one below.</span>
+          </div>
+        } @else {
+          <ul class="cred-list">
+            @for (cred of credentials(); track cred.id) {
+              <li class="cred">
+                <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14 9l2 2"/></svg></span>
+                <div class="cred-main">
+                  <div class="row gap-2">
+                    <strong>{{ cred.name }}</strong>
+                    @if (cred.disabled) { <span class="badge">Disabled</span> }
+                    @else if (cred.lastStatus === 'ok') { <span class="badge on"><span class="dot"></span>Working</span> }
+                    @else if (cred.lastStatus === 'error' || cred.lastStatus === 'quota') { <span class="badge err"><span class="dot"></span>{{ cred.lastErrorKind || cred.lastStatus }}</span> }
+                    @else { <span class="badge">Not tested</span> }
+                  </div>
+                  <div class="small muted">
+                    @if (cred.projectLabel) { Project: {{ cred.projectLabel }} · }
+                    Added {{ cred.createdAt | date: 'mediumDate' }}
+                  </div>
+                </div>
+                <div class="row">
+                  <button class="btn secondary small" type="button" (click)="testCredential(cred)" [disabled]="testingId() === cred.id">
+                    {{ testingId() === cred.id ? 'Testing…' : 'Test' }}
+                  </button>
+                  <button class="btn secondary small" type="button" (click)="toggleDisabled(cred)">
+                    {{ cred.disabled ? 'Enable' : 'Disable' }}
+                  </button>
+                  <button class="btn danger small" type="button" (click)="removeCredential(cred)">Delete</button>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+
+        <form class="add-form" (ngSubmit)="addCredential()">
+          <h3>Add a key</h3>
+          <div class="grid gap-x-4 sm:grid-cols-2">
+            <div class="field">
+              <label for="cred-name">Name</label>
+              <input id="cred-name" type="text" [ngModel]="newName()" (ngModelChange)="newName.set($event)" name="credName" placeholder="e.g. Personal project" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="cred-project">Project label <span class="muted">(optional)</span></label>
+              <input id="cred-project" type="text" [ngModel]="newProject()" (ngModelChange)="newProject.set($event)" name="credProject" placeholder="e.g. interviewmate-dev" autocomplete="off" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="cred-key">API key</label>
+            <input id="cred-key" type="password" [ngModel]="newKey()" (ngModelChange)="newKey.set($event)" name="credKey" placeholder="Paste your Google AI Studio API key" autocomplete="off" />
+            <p class="hint">Encrypted with your OS secure storage. Never shown again, never logged. The field clears when you submit.</p>
+          </div>
+          <button class="btn" type="submit" [disabled]="!bridge.isDesktop()">Add key</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section">
+      <div class="section-intro">
+        <h2>Usage &amp; models</h2>
+        <p class="muted small">Voice interviews always use the free Gemini Live model. Paid models only apply to coaching notes and feedback.</p>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label class="check-row">
+            <input type="checkbox" [ngModel]="settings().freeTierOnly" (ngModelChange)="saveSettings({ freeTierOnly: $event })" name="freeTierOnly" />
+            <span>Free-tier only <span class="badge accent ml-1">Recommended</span></span>
+          </label>
+          <p class="hint">Rejects configurations that could cause paid usage where that can be determined. If free quota runs out, the app stops and tells you.</p>
+        </div>
+        <div class="field">
+          <label class="check-row">
+            <input type="checkbox" [ngModel]="settings().allowPaidUsage" (ngModelChange)="togglePaidUsage($event)" name="allowPaidUsage" />
+            <span>Allow paid usage</span>
+          </label>
+          <p class="hint">Unlocks paid text models. Paid calls are billed per token to your key's Cloud project — you must link billing in Google AI Studio yourself. If a model is out of quota or overloaded, the app automatically falls back to free Gemini Flash, then Flash-Lite.</p>
+        </div>
+        <div class="grid gap-x-4 sm:grid-cols-2">
+          <div class="field">
+            <label for="textModel">Text model (coaching + feedback)</label>
+            <select id="textModel" [ngModel]="settings().textModel" (ngModelChange)="saveSettings({ textModel: $event })" name="textModel" [disabled]="!settings().allowPaidUsage">
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash — free tier</option>
+              <option value="gemini-3.1-pro-preview" [disabled]="!settings().allowPaidUsage">Gemini 3.1 Pro Preview — paid</option>
+              <option value="gemini-4-argon" [disabled]="!settings().allowPaidUsage">Gemini 4 Argon — paid, no free tier</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="interval">Webcam coaching interval (seconds)</label>
+            <input id="interval" type="number" min="10" max="120" step="5" [ngModel]="settings().coachingIntervalSec"
+                   (ngModelChange)="saveSettings({ coachingIntervalSec: $event })" name="coachingInterval" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section">
+      <div class="section-intro">
+        <h2>Privacy</h2>
+        <p class="muted small">What leaves your computer, and when.</p>
+      </div>
+      <div class="section-body">
+        <ul class="privacy">
+          <li><strong>Voice interview:</strong> your audio and the transcript are sent to Google's Gemini API so the interviewer can hear and answer you. Nothing is recorded by default.</li>
+          <li><strong>CV:</strong> only the summary text you confirm is sent, to ground the questions. The file stays on your computer.</li>
+          <li><strong>Webcam coaching (Mode 2, opt-in):</strong> selected still frames are sent for analysis and never saved.</li>
+          <li><strong>Free tier:</strong> Google may use free-tier content to improve its products.</li>
+          <li><strong>Sessions:</strong> stored locally only when you press "Save session".</li>
+        </ul>
+        <div class="danger-zone">
+          <div>
+            <strong>Clear local data</strong>
+            <p class="small muted m-0">Removes saved keys, settings, sessions, scheduled interviews and saved vocabulary words from this device.</p>
+          </div>
+          <button class="btn danger" type="button" (click)="clearAll()">Clear data</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>

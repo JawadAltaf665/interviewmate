@@ -1,0 +1,43 @@
+.setup-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 1rem; align-items: start; }
+@media (max-width: 960px) { .setup-grid { grid-template-columns: 1fr; } }
+
+.stepper { display: flex; gap: 0.4rem; list-style: none; margin: 0; padding: 0; font-size: 0.8rem; font-weight: 600; color: var(--text-faint); }
+.stepper li { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem 0.3rem 0.35rem; border-radius: 999px; border: 1px solid var(--card-border); }
+.stepper span { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; height: 1.3rem; border-radius: 50%; background: var(--bg-raised); font-size: 0.72rem; }
+.stepper .current { color: var(--text); border-color: rgba(139, 143, 249, 0.45); background: var(--accent-soft); }
+.stepper .current span { background: var(--accent-strong); color: #fff; }
+
+.consent { margin: 1rem 0 0; }
+.projects { margin: 0.2rem 0 0; padding-left: 1.2rem; color: var(--text-dim); }
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+  padding: 1.4rem 1rem; text-align: center; cursor: pointer;
+  border: 1.5px dashed var(--border-strong); border-radius: 10px; background: var(--bg);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.dropzone:hover { border-color: var(--accent); background: rgba(108, 111, 245, 0.05); }
+.dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.cv-file { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid var(--card-border); border-radius: 10px; background: var(--bg); }
+
+.cam-test { display: flex; gap: 1.25rem; margin-top: 1rem; flex-wrap: wrap; align-items: flex-start; }
+.cam-box { position: relative; width: 320px; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; border: 1px solid var(--card-border); }
+.cam-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-faint); font-size: 0.8rem; }
+
+.summary { position: sticky; top: 1.25rem; }
+.summary dl { margin: 0 0 1.1rem; }
+.summary dl div { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--card-border); font-size: 0.85rem; }
+.summary dt { color: var(--text-faint); }
+.summary dd { margin: 0; font-weight: 600; text-align: right; }
+.start-btn { width: 100%; }
+
+.when { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
+.when-label { font-size: 0.78rem; font-weight: 700; color: var(--text-faint); }
+.when .segmented { display: flex; padding: 3px; gap: 2px; border: 1px solid var(--card-border); border-radius: 9px; background: var(--bg); }
+.when .segmented button {
+  flex: 1; height: 30px; border: 0; border-radius: 6px; cursor: pointer;
+  background: transparent; color: var(--text-dim); font: inherit; font-size: 0.8rem; font-weight: 600;
+}
+.when .segmented button.on { background: var(--accent-soft); color: var(--text); }
+.when input { width: 100%; }

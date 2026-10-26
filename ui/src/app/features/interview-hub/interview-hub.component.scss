@@ -1,0 +1,36 @@
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+.card-head h2 { margin: 0; }
+
+.due-card {
+  display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap;
+  border-color: var(--accent-strong);
+  background: linear-gradient(120deg, var(--accent-soft), var(--card) 60%);
+}
+.due-pulse {
+  width: 14px; height: 14px; border-radius: 50%; flex: none; background: var(--accent-strong);
+  box-shadow: 0 0 0 0 rgba(108, 111, 245, 0.5); animation: ring 1.6s ease-out infinite;
+}
+@keyframes ring { 70% { box-shadow: 0 0 0 12px rgba(108, 111, 245, 0); } 100% { box-shadow: 0 0 0 0 rgba(108, 111, 245, 0); } }
+.due-body { flex: 1; min-width: 14rem; }
+.due-label { margin: 0 0 0.2rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+
+.sched-row {
+  display: flex; align-items: flex-start; gap: 0.9rem; flex-wrap: wrap;
+  padding: 0.85rem 0; border-top: 1px solid var(--card-border);
+}
+.card-head + .sched-row { border-top: 0; }
+.date-tile {
+  flex: none; width: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0.35rem 0; border-radius: 10px; border: 1px solid var(--card-border); background: var(--bg-raised);
+}
+.date-tile .mon { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.date-tile .day { font-size: 1.35rem; font-weight: 750; line-height: 1.1; color: var(--text); }
+.sched-main { flex: 1; min-width: 14rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.sched-main strong { color: var(--text); }
+.countdown { color: var(--accent); font-weight: 650; }
+.sched-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.missed .sched-main strong { color: var(--text-dim); }
+
+.edit-row { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
+.edit-row.full { flex-basis: 100%; }
+.edit-row input { width: auto; height: 30px; }

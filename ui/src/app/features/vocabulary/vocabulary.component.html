@@ -1,0 +1,179 @@
+<main class="page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Vocabulary</p>
+      <h1>Vocabulary practice</h1>
+      <p class="lede">Read a short paragraph, listen to it at your own speed, and select any word or sentence to hear it and see what it means.</p>
+    </div>
+    <button class="btn" type="button" (click)="newParagraph()" [disabled]="generating()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" [class.spin]="generating()"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+      {{ generating() ? 'Writing…' : 'New paragraph' }}
+    </button>
+  </div>
+
+  @let p = prefs();
+  <section class="card controls">
+    <div class="control">
+      <span class="control-label">Topic</span>
+      <div class="segmented" role="group" aria-label="Topic">
+        @for (t of topics; track t.id) {
+          <button type="button" [class.on]="p.topic === t.id" (click)="setPref('topic', t.id)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+    <div class="control">
+      <span class="control-label">Level</span>
+      <div class="segmented" role="group" aria-label="Level">
+        @for (l of levels; track l.id) {
+          <button type="button" [class.on]="p.level === l.id" (click)="setPref('level', l.id)">{{ l.label }}</button>
+        }
+      </div>
+    </div>
+    <div class="control">
+      <span class="control-label">Length</span>
+      <div class="segmented" role="group" aria-label="Length">
+        @for (l of lengths; track l.id) {
+          <button type="button" [class.on]="p.length === l.id" (click)="setPref('length', l.id)">{{ l.label }}</button>
+        }
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" [checked]="p.urdu" (change)="setPref('urdu', $any($event.target).checked)" />Urdu meanings</label>
+    <label class="check" [class.disabled]="!saved().length" [title]="saved().length ? 'Work some of your saved words into the next paragraph' : 'Save some words first'">
+      <input type="checkbox" [checked]="p.useSaved && !!saved().length" [disabled]="!saved().length" (change)="setPref('useSaved', $any($event.target).checked)" />Practise my saved words
+    </label>
+  </section>
+
+  @if (paraError()) {
+    <p class="notice error" role="alert">{{ paraError() }} <button class="btn small secondary ml-2" type="button" (click)="newParagraph()">Try again</button></p>
+  }
+
+  <div class="layout">
+    <section class="card reader-card">
+      <div class="player">
+        @let paraState = isActive('paragraph') ? speech.state() : 'idle';
+        <button class="btn" type="button" (click)="toggleParagraph()" [disabled]="!paragraph() || generating() || paraState === 'loading'">
+          @if (paraState === 'playing') {
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg> Pause
+          } @else if (paraState === 'loading') {
+            <span class="dot-pulse"></span> Preparing voice…
+          } @else {
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z"/></svg>
+            {{ paraState === 'paused' ? 'Resume' : 'Listen' }}
+          }
+        </button>
+        <button class="btn secondary icon-only" type="button" title="Stop" aria-label="Stop" (click)="speech.stop()" [disabled]="speech.state() === 'idle'">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+        <div class="segmented" role="group" aria-label="Speed">
+          @for (s of speeds; track s.id) {
+            <button type="button" [class.on]="p.speed === s.id" (click)="setPref('speed', s.id)">{{ s.label }}</button>
+          }
+        </div>
+        <select class="voice" aria-label="Voice" [value]="p.voice" (change)="setPref('voice', $any($event.target).value)">
+          @for (v of voices; track v.id) { <option [value]="v.id" [selected]="p.voice === v.id">{{ v.label }}</option> }
+        </select>
+      </div>
+      @if (speech.note()) { <p class="notice warn mt-0" role="status">{{ speech.note() }}</p> }
+      @if (isActive('paragraph') && speech.state() === 'loading') {
+        <p class="hint mt-0 mb-3">The first play of a paragraph takes about 10–20 seconds. After that, replays and speed changes are instant.</p>
+      }
+
+      @if (paragraph(); as para) {
+        <h2 class="para-title">{{ para.title }}</h2>
+        <div class="reader-wrap" #reader>
+          <p class="reader" [class.faded]="generating()" (mouseup)="onMouseUp()" (dblclick)="onDoubleClick()">
+            @for (s of sentences(); track $index; let i = $index) {
+              <span class="sentence" [class.reading]="readingIndex() === i">@for (part of s.parts; track $index) {@if (part.word) {<span class="kw" role="button" tabindex="0" [class.saved]="isSaved(part.word)" (click)="openWord(part.word)" (keydown.enter)="openWord(part.word)">{{ part.text }}</span>} @else {<span>{{ part.text }}</span>}}</span>
+            }
+          </p>
+          @if (selection(); as sel) {
+            <div class="sel-bar" [style.left.px]="sel.x" [style.top.px]="sel.y" (mousedown)="$event.preventDefault()">
+              <button type="button" (click)="speakSelection()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+                {{ isActive('selection') && speech.state() === 'loading' ? '…' : 'Speak' }}
+              </button>
+              <button type="button" (click)="explainSelection()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/></svg>
+                Meaning
+              </button>
+              <button type="button" (click)="saveSelection()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>
+                Save
+              </button>
+            </div>
+          }
+        </div>
+        <p class="hint">Select any word or sentence to hear it or see its meaning. Double-click a word to hear it straight away. <span class="kw-sample">Underlined</span> words are the key words — click one.</p>
+      } @else if (generating()) {
+        <div class="skeleton" aria-label="Writing a paragraph"><span></span><span></span><span></span><span></span><span class="short"></span></div>
+      } @else if (!paraError()) {
+        <p class="muted">Press <strong>New paragraph</strong> to start.</p>
+      }
+    </section>
+
+    <aside class="side">
+      @if (card(); as c) {
+        <section class="card word-card" aria-live="polite">
+          @if (c.loading) {
+            <p class="m-0 muted"><span class="dot-pulse"></span> Looking up “{{ c.text }}”…</p>
+          } @else if (c.error) {
+            <p class="m-0 error-text">{{ c.error }}</p>
+          } @else if (c.word; as w) {
+            <div class="word-head">
+              <div>
+                <h2 class="m-0" [class.long]="w.word.length > 40">{{ w.word }}</h2>
+                <p class="m-0 small muted">
+                  @if (w.partOfSpeech) { <em>{{ w.partOfSpeech }}</em> }
+                  @if (w.sayIt) { · say it: <strong class="say-it">{{ w.sayIt }}</strong> }
+                </p>
+              </div>
+              <button class="btn secondary icon-only" type="button" [title]="'Hear ' + w.word" [attr.aria-label]="'Hear ' + w.word" (click)="say(w.word, 'card')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+              </button>
+            </div>
+            <p class="meaning">{{ w.meaning }}</p>
+            @if (w.urdu) { <p class="urdu" dir="rtl" lang="ur">{{ w.urdu }}</p> }
+            @if (w.example) {
+              <p class="example">
+                “{{ w.example }}”
+                <button class="link-btn" type="button" (click)="say(w.example, 'example')">🔊 hear example</button>
+              </p>
+            }
+            <button class="btn small" [class.secondary]="isSaved(w)" type="button" (click)="save(w)" [disabled]="isSaved(w)">
+              {{ isSaved(w) ? '★ Saved in My words' : '☆ Save to My words' }}
+            </button>
+          }
+        </section>
+      }
+
+      @if (paragraph()?.words?.length) {
+        <section class="card">
+          <h2>Key words</h2>
+          <div class="chips">
+            @for (w of paragraph()!.words; track w.word) {
+              <button class="chip" type="button" [class.saved]="isSaved(w)" (click)="openWord(w)">{{ w.word }}</button>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="card">
+        <h2>My words <span class="badge ml-1">{{ saved().length }}</span></h2>
+        @for (w of saved(); track w.id) {
+          <div class="saved-row">
+            <button class="icon-btn" type="button" [title]="'Hear ' + w.word" [attr.aria-label]="'Hear ' + w.word" (click)="say(w.word, 'saved-' + w.id)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+            </button>
+            <button class="saved-word" type="button" (click)="openWord(w)">
+              <strong>{{ w.word }}</strong>
+              <span class="small muted">{{ w.meaning }}</span>
+            </button>
+            <button class="icon-btn remove" type="button" [title]="'Remove ' + w.word" [attr.aria-label]="'Remove ' + w.word" (click)="remove(w)">×</button>
+          </div>
+        } @empty {
+          <p class="small muted m-0">Words you save appear here. They stay until you remove them.</p>
+        }
+      </section>
+    </aside>
+  </div>
+</main>

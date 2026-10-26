@@ -1,0 +1,113 @@
+<!-- While an interview room is open, the app shell shows it on this tab instead. -->
+@if (!state.roomOpen()) {
+<main class="page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Interview</p>
+      <h1>Interview room</h1>
+      <p class="lede">Your scheduled mock interviews. Start one when it's time, or start a new interview now.</p>
+    </div>
+    <div class="row">
+      <a class="btn secondary" routerLink="/setup" [queryParams]="{ when: 'later' }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M12 14v4M10 16h4"/></svg>
+        Schedule an interview
+      </a>
+      <a class="btn" routerLink="/setup">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>
+        Start one now
+      </a>
+    </div>
+  </div>
+
+  @if (error()) { <p class="notice error" role="alert">{{ error() }}</p> }
+
+  @let b = schedule.buckets();
+  @for (item of b.due; track item.id) {
+    <section class="card due-card" role="status">
+      <div class="due-pulse" aria-hidden="true"></div>
+      <div class="due-body">
+        <p class="due-label">{{ when(item) === 'now' || when(item).endsWith('ago') ? 'Scheduled for now' : 'Starts ' + when(item) }}</p>
+        <h2 class="m-0">{{ item.title }}</h2>
+        <p class="small muted m-0">{{ item.at | date: 'EEEE, MMM d · h:mm a' }} · {{ meta(item) }}</p>
+      </div>
+      <div class="row">
+        <button class="btn large" type="button" (click)="start(item)">Start interview</button>
+        <button class="btn secondary" type="button" (click)="schedule.remove(item)">Remove</button>
+      </div>
+    </section>
+  }
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Upcoming</h2>
+      <span class="badge">{{ b.upcoming.length }}</span>
+    </div>
+    @for (item of b.upcoming; track item.id) {
+      <div class="sched-row">
+        <div class="date-tile" aria-hidden="true">
+          <span class="mon">{{ item.at | date: 'MMM' }}</span>
+          <span class="day">{{ item.at | date: 'd' }}</span>
+        </div>
+        <div class="sched-main">
+          <strong>{{ item.title }}</strong>
+          <span class="small muted">{{ item.at | date: 'EEEE · h:mm a' }} · <span class="countdown">{{ when(item) }}</span></span>
+          <span class="small muted">{{ meta(item) }}</span>
+          @if (editingId() === item.id) {
+            <div class="edit-row">
+              <input type="datetime-local" [value]="editValue()" [min]="minInput()" (input)="editValue.set($any($event.target).value)" aria-label="New date and time" />
+              <button class="btn small" type="button" (click)="saveTime(item)">Save time</button>
+              <button class="btn small secondary" type="button" (click)="editingId.set(null)">Cancel</button>
+            </div>
+          }
+        </div>
+        <div class="sched-actions">
+          <button class="btn small" type="button" (click)="start(item)">Start now</button>
+          <button class="btn small secondary" type="button" (click)="edit(item)">Change time</button>
+          <button class="btn small danger" type="button" (click)="schedule.remove(item)">Remove</button>
+        </div>
+      </div>
+    } @empty {
+      <div class="empty-state">
+        <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span>
+        <p class="m-0 font-semibold text-[var(--text)]">{{ b.due.length ? 'Nothing else scheduled' : 'No interview scheduled' }}</p>
+        <p class="small mt-1 mb-4">Pick an exact date and time on the New Interview page and you'll get a reminder when it's time.</p>
+        <div class="row justify-center">
+          <a class="btn secondary" routerLink="/setup" [queryParams]="{ when: 'later' }">Schedule an interview</a>
+          <a class="btn" routerLink="/setup">Start one now</a>
+        </div>
+      </div>
+    }
+  </section>
+
+  @if (b.missed.length) {
+    <section class="card">
+      <div class="card-head">
+        <h2>Missed</h2>
+        <span class="badge">{{ b.missed.length }}</span>
+      </div>
+      @for (item of b.missed; track item.id) {
+        <div class="sched-row missed">
+          <div class="sched-main">
+            <strong>{{ item.title }}</strong>
+            <span class="small muted">Was {{ item.at | date: 'EEE, MMM d · h:mm a' }} ({{ when(item) }}) · {{ meta(item) }}</span>
+          </div>
+          <div class="sched-actions">
+            <button class="btn small secondary" type="button" (click)="start(item)">Start now</button>
+            <button class="btn small secondary" type="button" (click)="edit(item)">Reschedule</button>
+            <button class="btn small danger" type="button" (click)="schedule.remove(item)">Remove</button>
+          </div>
+          @if (editingId() === item.id) {
+            <div class="edit-row full">
+              <input type="datetime-local" [value]="editValue()" [min]="minInput()" (input)="editValue.set($any($event.target).value)" aria-label="New date and time" />
+              <button class="btn small" type="button" (click)="saveTime(item)">Save time</button>
+              <button class="btn small secondary" type="button" (click)="editingId.set(null)">Cancel</button>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <p class="hint">Reminders, 10 minutes before and at the scheduled time, while InterviewMate is open (minimised is fine): a Windows notification, a banner with a chime in the app, and a flashing taskbar icon. Windows notifications appear only if they are switched on in Windows Settings → System → Notifications. If the app was closed, the interview shows here as due or missed.</p>
+</main>
+}

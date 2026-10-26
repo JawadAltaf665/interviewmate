@@ -1,0 +1,94 @@
+<main class="page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Dashboard</p>
+      <h1>Welcome back</h1>
+      <p class="lede">Practice out loud with an AI interviewer that follows up on your answers and grades your real transcript.</p>
+    </div>
+    <a class="btn large" routerLink="/setup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      New interview
+    </a>
+  </div>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="badge accent"><span class="dot"></span>Voice-first mock interviews</span>
+      <h2>Ready for your next interview?</h2>
+      <p>Pick a level, attach your CV to keep questions grounded in your real experience, and get scored feedback the moment you finish.</p>
+      <div class="row">
+        <a class="btn" routerLink="/setup">Start mock interview</a>
+        <a class="btn secondary" routerLink="/settings">Manage API keys</a>
+      </div>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <div class="wave">@for (b of bars; track $index) { <span [style.height.%]="b"></span> }</div>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="card stat">
+      <span class="stat-label">Saved sessions</span>
+      <span class="stat-value">{{ total() }}</span>
+    </div>
+    <div class="card stat">
+      <span class="stat-label">Last practice</span>
+      <span class="stat-value">{{ sessions().length ? (sessions()[0].date | date: 'MMM d') : '—' }}</span>
+    </div>
+    <div class="card stat">
+      <span class="stat-label">Practice time</span>
+      <span class="stat-value">{{ totalMinutes() }}<small> min</small></span>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <section class="card">
+      <div class="card-head">
+        <h2>Recent sessions</h2>
+        <a class="btn secondary small" routerLink="/setup">New</a>
+      </div>
+      @if (loadError()) {
+        <p class="notice error">{{ loadError() }}</p>
+      } @else if (sessions().length === 0) {
+        <div class="empty-state">
+          <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></span>
+          <p class="m-0 font-semibold text-[var(--text)]">No saved sessions yet</p>
+          <p class="small m-0">Sessions are only saved when you choose "Save session" after an interview.</p>
+        </div>
+      } @else {
+        <ul class="session-list">
+          @for (s of sessions(); track s.id) {
+            <li>
+              <span class="s-avatar">{{ levelLabel(s.level).charAt(0) }}</span>
+              <span class="s-main">
+                <span class="s-title">{{ sessionTitle(s) }}</span>
+                <span class="muted small">{{ s.date | date: 'medium' }}</span>
+              </span>
+              <span class="badge">{{ levelLabel(s.level) }}</span>
+              <span class="muted small s-dur">{{ durationLabel(s.durationSec) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <div>
+      <section class="card feature">
+        <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0"/></svg></span>
+        <div><h3>Voice-first</h3><p class="muted small">One question at a time, with natural follow-ups.</p></div>
+      </section>
+      <section class="card feature">
+        <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span>
+        <div><h3>CV-grounded</h3><p class="muted small">Questions stay tied to skills you actually list.</p></div>
+      </section>
+      <section class="card feature">
+        <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+        <div><h3>Camera coaching</h3><p class="muted small">Optional notes on framing, lighting and gaze.</p></div>
+      </section>
+      <p class="privacy-note small">
+        Local-first: API keys are encrypted on this device, nothing is recorded by default,
+        and webcam frames are only sent in Mode 2 with your consent.
+      </p>
+    </div>
+  </div>
+</main>

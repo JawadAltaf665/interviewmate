@@ -1,0 +1,146 @@
+<main class="page">
+  @if (config(); as cfg) {
+    <div class="page-header room-head">
+      <div>
+        <p class="eyebrow">Live interview</p>
+        <h1>{{ cfg.level.charAt(0).toUpperCase() + cfg.level.slice(1) }} interview{{ cfg.role ? ' — ' + cfg.role : '' }}</h1>
+      </div>
+      <div class="row">
+        @if (cfg.simulation) { <span class="badge accent">Simulation — local only, not Gemini</span> }
+        @if (cfg.mode === 2) {
+          @if (coachingOn()) { <span class="badge on" role="status"><span class="dot"></span>Camera analysis ON</span> }
+          @else { <span class="badge">Camera analysis paused</span> }
+          <button class="btn secondary small" type="button" (click)="toggleCoaching()">
+            {{ coachingOn() ? 'Pause coaching' : 'Resume coaching' }}
+          </button>
+        }
+        <span class="timer" aria-label="Time remaining">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>
+          {{ timeLabel() }}
+        </span>
+      </div>
+    </div>
+
+    @for (n of notices(); track $index) { <p class="notice" role="status">{{ n }}</p> }
+    @if (fatalError()) { <p class="notice error" role="alert">{{ fatalError() }}</p> }
+
+    <div class="room-grid">
+      <section class="stage">
+        <div class="stage-top">
+          <span class="live-pill" [class.on]="started()"><span class="dot"></span>{{ started() ? 'LIVE' : 'READY' }}</span>
+          <span class="muted small">{{ config()?.interviewerName || 'AI' }} · AI Interviewer</span>
+        </div>
+
+        <app-avatar [state]="avatarState()"></app-avatar>
+        <p class="status" role="status">{{ statusText() }}</p>
+
+        <div class="meter" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+          <div class="meter-track"><div class="meter-fill" [style.width.%]="micLevel() * 100"></div></div>
+        </div>
+
+        @if (currentQuestion()) {
+          <div class="question">
+            <span class="label">Current question</span>
+            <p>{{ currentQuestion() }}</p>
+          </div>
+        }
+
+        @if (!started()) {
+          <div class="ready">
+            <p class="muted small">
+              Pressing Begin asks for microphone{{ cfg.mode === 2 ? ' and camera' : '' }} permission.
+              @if (cfg.mode === 1) { Your webcam preview stays on this device. }
+              @if (cfg.mode === 2 && cfg.coachingConsent) { A still frame is sent to Google every coaching interval for presentation feedback. }
+            </p>
+            <button class="btn large" type="button" (click)="begin()">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>
+              Begin interview
+            </button>
+            <button class="btn secondary leave-btn" type="button" (click)="leave()">Not now — back to schedule</button>
+          </div>
+        }
+
+        @if (started() && cfg.simulation && answerMode() === 'text') {
+          <div class="field answer">
+            <label for="answer">Type your answer (speech recognition is unavailable here)</label>
+            <textarea id="answer" [ngModel]="textAnswer()" (ngModelChange)="textAnswer.set($event)" name="textAnswer"></textarea>
+            <button class="btn" type="button" (click)="submitTextAnswer()">Submit answer</button>
+          </div>
+        }
+        @if (started() && !cfg.simulation) {
+          <button class="btn large done-btn" type="button" (click)="finishAnswer()" [disabled]="!answering()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+            {{ answering() ? (cfg.answerMode === 'manual' ? 'Done answering' : 'Send answer now') : 'Interviewer speaking…' }}
+            @if (answering()) { <kbd>Space</kbd><kbd>Enter</kbd> }
+          </button>
+        }
+        @if (started()) {
+          <button class="btn danger end-btn" type="button" (click)="endInterview()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            End interview
+          </button>
+          <p class="hint text-center mb-0">You can switch tabs: the interview keeps running. Come back with <strong>Interview</strong> in the sidebar.</p>
+        }
+      </section>
+
+      <div class="side">
+        <section class="card">
+          <div class="card-head">
+            <h2>Your camera</h2>
+            <span class="badge">Local preview</span>
+          </div>
+          <div class="cam-slot" #camSlot>
+            <div class="cam-frame" [class.pip]="pip()"
+                 [style.left.px]="pip() ? pipPos()?.x : null" [style.top.px]="pip() ? pipPos()?.y : null"
+                 [style.bottom]="pip() && pipPos() ? 'auto' : null"
+                 (pointerdown)="startPipDrag($event)" (pointermove)="movePipDrag($event)"
+                 (pointerup)="endPipDrag()" (pointercancel)="endPipDrag()">
+              <video #webcam class="webcam" [hidden]="vbg.active()" autoplay muted playsinline aria-label="Your webcam preview"></video>
+              <canvas #bgCanvas class="webcam" [hidden]="!vbg.active()" aria-label="Your webcam preview with virtual background"></canvas>
+              @if (!camOn()) { <span class="cam-empty">Camera starts when you press Begin</span> }
+              @if (pip()) {
+                <button class="pip-back" type="button" (click)="scrollToCamera()" title="Back to camera panel" aria-label="Back to camera panel">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                </button>
+              }
+            </div>
+          </div>
+          @if (cfg.mode === 2) { <p class="hint">Still frames are sent for coaching only while "Camera analysis ON" is shown.</p> }
+
+          <details class="bg-picker" open>
+            <summary>Camera background</summary>
+            <p class="hint mb-3">Processed on this device only — nothing is uploaded.</p>
+            <app-bg-picker />
+          </details>
+
+          @if (cfg.mode === 2 && coachingNotes().length) {
+            <h3>Coaching notes</h3>
+            <ul class="notes">
+              @for (note of coachingNotes(); track $index) { <li>{{ note }}</li> }
+            </ul>
+          }
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Transcript</h2>
+            <span class="badge">{{ transcript().length }} turns</span>
+          </div>
+          @if (!transcript().length) {
+            <p class="muted small m-0">The transcript will appear here as the interview runs.</p>
+          } @else {
+            <ol class="transcript">
+              @for (entry of transcript(); track $index) {
+                <li [class.user]="entry.speaker === 'user'">
+                  <span class="who">{{ entry.speaker === 'interviewer' ? (config()?.interviewerName || 'Interviewer') : 'You' }}</span>
+                  {{ entry.text }}
+                </li>
+              }
+            </ol>
+          }
+        </section>
+      </div>
+    </div>
+  }
+</main>

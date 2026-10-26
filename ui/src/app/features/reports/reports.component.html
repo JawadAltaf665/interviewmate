@@ -1,0 +1,170 @@
+<main class="page">
+  <div class="page-header">
+    <div>
+      <p class="eyebrow">Reports</p>
+      <h1>Progress report</h1>
+      <p class="lede">All your saved interviews in one report. Pick a period, add an optional AI summary, and save it as a PDF.</p>
+    </div>
+    <div class="row no-print">
+      <button class="btn secondary" type="button" (click)="summarize()" [disabled]="summarizing() || !report().scoredCount">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
+        {{ summarizing() ? 'Summarizing…' : summary() ? 'Regenerate AI summary' : 'AI summary' }}
+      </button>
+      <button class="btn" type="button" (click)="exportPdf()" [disabled]="exporting() || !report().sessions.length">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        {{ exporting() ? 'Saving…' : 'Save as PDF' }}
+      </button>
+    </div>
+  </div>
+
+  <section class="card filters no-print">
+    <div class="segmented" role="group" aria-label="Report period">
+      @for (r of ranges; track r.id) {
+        <button type="button" [class.on]="range() === r.id" (click)="setRange(r.id)">{{ r.label }}</button>
+      }
+    </div>
+    @if (range() === 'custom') {
+      <div class="custom-range">
+        <label>From <input type="date" [ngModel]="customFrom()" (ngModelChange)="customFrom.set($event); periodChanged()" name="from" /></label>
+        <label>To <input type="date" [ngModel]="customTo()" (ngModelChange)="customTo.set($event); periodChanged()" name="to" /></label>
+      </div>
+    }
+  </section>
+
+  @if (exportNote()) {
+    <p class="notice ok no-print" role="status">
+      {{ exportNote() }}
+      @if (exportedPath()) { <button class="btn small secondary ml-2" type="button" (click)="showFile()">Show in folder</button> }
+    </p>
+  }
+  @if (loadError()) { <p class="notice error" role="alert">{{ loadError() }}</p> }
+
+  @if (!loading()) {
+    @let r = report();
+    <p class="period">
+      <strong>{{ range() === 'custom' ? 'Custom period' : 'Last ' + rangeLabel() }}</strong>
+      · {{ r.from | date: 'mediumDate' }} – {{ r.to | date: 'mediumDate' }}
+      <span class="muted"> · generated {{ generatedAt() | date: 'medium' }}</span>
+    </p>
+
+    @if (!r.sessions.length) {
+      <section class="card empty-state">
+        <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg></span>
+        <p class="m-0 font-semibold text-[var(--text)]">No saved interviews in this period</p>
+        <p class="small mt-1 mb-4">Reports combine interviews you saved with "Save session". Try a longer period.</p>
+        <a class="btn no-print" routerLink="/setup">Start a mock interview</a>
+      </section>
+    } @else {
+      <div class="kpis">
+        <div class="card kpi"><span class="kpi-label">Interviews</span><span class="kpi-value">{{ r.sessions.length }}</span></div>
+        <div class="card kpi"><span class="kpi-label">Practice time</span><span class="kpi-value">{{ duration(r.totalSec) }}</span></div>
+        <div class="card kpi"><span class="kpi-label">Average score</span><span class="kpi-value">{{ r.avgOverall ?? '—' }}</span>
+          @if (r.bestOverall !== null) { <span class="kpi-sub">best {{ r.bestOverall }}</span> }</div>
+        <div class="card kpi"><span class="kpi-label">Change</span>
+          <span class="kpi-value" [class.up]="(r.change ?? 0) > 0" [class.down]="(r.change ?? 0) < 0">
+            {{ r.change === null ? '—' : (r.change > 0 ? '▲ +' : r.change < 0 ? '▼ ' : '') + r.change }}
+          </span>
+          <span class="kpi-sub">first → last interview</span></div>
+      </div>
+      @if (r.scoredCount < r.sessions.length) {
+        <p class="hint mt-0 mb-4">{{ r.sessions.length - r.scoredCount }} interview(s) in this period were saved without scores (before v1.4, or with no feedback) and are left out of the averages.</p>
+      }
+
+      @if (summary(); as s) {
+        <section class="card ai">
+          <h2><span class="badge accent mr-2">AI</span>Combined coaching summary</h2>
+          <p class="muted mt-0">{{ s.overview }}</p>
+          <div class="three-col">
+            <div><h3>Going well</h3><ul class="list">@for (x of s.strengths; track $index) { <li>{{ x }}</li> }</ul></div>
+            <div><h3>Focus areas</h3><ul class="list">@for (x of s.focusAreas; track $index) { <li>{{ x }}</li> }</ul></div>
+            <div><h3>Next steps</h3><ul class="list">@for (x of s.nextSteps; track $index) { <li>{{ x }}</li> }</ul></div>
+          </div>
+          <p class="hint mb-0">Generated by Gemini{{ s.model ? ' (' + s.model + ')' : '' }} from the saved feedback only — coaching, not a hiring decision.</p>
+        </section>
+      }
+      @if (summaryError()) { <p class="notice warn no-print" role="alert">{{ summaryError() }}</p> }
+
+      <div class="two-col">
+        <section class="card">
+          <h2>Overall score per interview</h2>
+          @if (r.trend.length) {
+            @let c = chart();
+            <div class="chart" (mouseleave)="hover.set(null)">
+              <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" role="img" [attr.aria-label]="'Overall score for ' + r.trend.length + ' interviews, from ' + r.trend[0].score + ' to ' + r.trend[r.trend.length - 1].score">
+                @for (g of c.grid; track g.v) {
+                  <line class="grid" [attr.x1]="PAD.left" [attr.x2]="W - PAD.right" [attr.y1]="g.y" [attr.y2]="g.y" />
+                  <text class="axis" [attr.x]="PAD.left - 8" [attr.y]="g.y + 4" text-anchor="end">{{ g.v }}</text>
+                }
+                @if (hover(); as h) { <line class="crosshair" [attr.x1]="h.x" [attr.x2]="h.x" [attr.y1]="PAD.top" [attr.y2]="H - PAD.bottom" /> }
+                <path class="line" [attr.d]="c.path" />
+                @for (p of c.pts; track p.id) {
+                  <circle class="dot" [class.active]="hover()?.id === p.id" [attr.cx]="p.x" [attr.cy]="p.y" r="5.5" />
+                  <circle class="hit" [attr.cx]="p.x" [attr.cy]="p.y" r="14" (mouseenter)="hover.set(p)" />
+                }
+                <text class="axis" [attr.x]="c.pts[0].x" [attr.y]="H - 8" [attr.text-anchor]="c.pts.length > 1 ? 'start' : 'middle'">{{ c.pts[0].date | date: 'MMM d' }}</text>
+                @if (c.pts.length > 1) {
+                  <text class="axis" [attr.x]="c.pts[c.pts.length - 1].x" [attr.y]="H - 8" text-anchor="end">{{ c.pts[c.pts.length - 1].date | date: 'MMM d' }}</text>
+                }
+              </svg>
+              @if (hover(); as h) {
+                <div class="tip no-print" [style.left.%]="(h.x / W) * 100" [style.top.%]="(h.y / H) * 100">
+                  <strong>{{ h.score }}</strong> · {{ h.date | date: 'MMM d, h:mm a' }}<br /><span class="muted">{{ h.title }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="muted small m-0">No scored interviews in this period.</p>
+          }
+        </section>
+
+        <section class="card">
+          <h2>Average by skill area</h2>
+          @for (cat of r.categories; track cat.label) {
+            <div class="bar-row" [title]="cat.label + ': average ' + cat.avg + ' over ' + cat.count + ' interview(s)'">
+              <div class="bar-head"><span>{{ cat.label }}</span><strong>{{ cat.avg }}</strong></div>
+              <div class="bar-track"><div class="bar-fill" [style.width.%]="cat.avg"></div></div>
+            </div>
+          } @empty {
+            <p class="muted small m-0">No scores in this period.</p>
+          }
+        </section>
+      </div>
+
+      <div class="two-col">
+        <section class="card">
+          <h2><span class="tag ok">+</span>Strengths</h2>
+          <ul class="list">
+            @for (x of r.strengths.slice(0, 8); track $index) { <li dir="auto">{{ x.text }} <span class="when">{{ x.date | date: 'MMM d' }}</span></li> }
+            @empty { <li class="muted">None recorded.</li> }
+          </ul>
+        </section>
+        <section class="card">
+          <h2><span class="tag warn">↑</span>Areas to improve</h2>
+          <ul class="list">
+            @for (x of r.improvements.slice(0, 8); track $index) { <li dir="auto">{{ x.text }} <span class="when">{{ x.date | date: 'MMM d' }}</span></li> }
+            @empty { <li class="muted">None recorded.</li> }
+          </ul>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>Interviews in this report</h2>
+        <table class="table">
+          <thead><tr><th>Date</th><th>Interview</th><th>Level</th><th>Length</th><th class="num">Score</th></tr></thead>
+          <tbody>
+            @for (s of r.sessions; track s.id) {
+              <tr>
+                <td>{{ s.date | date: 'MMM d, y, h:mm a' }}</td>
+                <td>{{ s.title || 'Mock interview' }}</td>
+                <td class="capitalize">{{ s.level }}</td>
+                <td>{{ duration(s.durationSec) }}</td>
+                <td class="num">{{ score(s) ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+      <p class="hint">Scores are 0–100 coaching estimates from the saved feedback, never a hiring decision.</p>
+    }
+  }
+</main>

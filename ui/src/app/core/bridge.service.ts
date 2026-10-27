@@ -2,6 +2,11 @@ import { Injectable, signal } from '@angular/core';
 import {
   AddCredentialInput,
   AppSettings,
+  ChatRecord,
+  ChatSummary,
+  CoachContent,
+  CoachToolDeclaration,
+  CoachTurnResult,
   CredentialMeta,
   InterviewLanguage,
   InterviewMateBridge,
@@ -23,6 +28,7 @@ import { normalizeFeedback } from './report';
 const DEV_SESSIONS_KEY = 'interviewmate.dev.sessions';
 const DEV_WORDS_KEY = 'interviewmate.dev.words';
 const DEV_SCHEDULE_KEY = 'interviewmate.dev.schedule';
+const DEV_CHATS_KEY = 'interviewmate.dev.chats';
 const DESKTOP_ONLY =
   'Desktop only: this needs the InterviewMate desktop app (Electron) and a saved Gemini credential. In this browser dev preview it is unavailable — use Simulation mode instead.';
 
@@ -128,6 +134,49 @@ export class BridgeService {
 
   async showExportedFile(): Promise<void> {
     if (this.bridge) await this.bridge.reports.showExportedFile();
+  }
+
+  // --- coach chat --------------------------------------------------------------
+  async coachTurn(input: { system: string; contents: CoachContent[]; tools: CoachToolDeclaration[]; pinModel?: string }): Promise<CoachTurnResult> {
+    if (this.bridge) return this.bridge.coach.turn(input);
+    throw new Error(DESKTOP_ONLY);
+  }
+
+  async transcribe(audioBase64: string): Promise<{ text: string; model: string }> {
+    if (this.bridge) return this.bridge.coach.transcribe({ audioBase64 });
+    throw new Error(DESKTOP_ONLY);
+  }
+
+  private devChats(): (ChatRecord & { id: string })[] {
+    try {
+      return JSON.parse(localStorage.getItem(DEV_CHATS_KEY) ?? '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  async listChats(): Promise<ChatSummary[]> {
+    if (this.bridge) return this.bridge.chats.list();
+    return this.devChats().map((c) => ({ id: c.id, title: c.title, createdAt: c.createdAt ?? '', updatedAt: c.updatedAt ?? '', count: c.messages.length }));
+  }
+
+  async getChat(id: string): Promise<ChatRecord | null> {
+    if (this.bridge) return this.bridge.chats.get(id);
+    return this.devChats().find((c) => c.id === id) ?? null;
+  }
+
+  async saveChat(chat: ChatRecord): Promise<ChatRecord> {
+    if (this.bridge) return this.bridge.chats.save(chat);
+    const now = new Date().toISOString();
+    const saved = { ...chat, id: chat.id ?? `c_${Date.now()}`, createdAt: chat.createdAt ?? now, updatedAt: now };
+    localStorage.setItem(DEV_CHATS_KEY, JSON.stringify([saved, ...this.devChats().filter((c) => c.id !== saved.id)]));
+    return saved;
+  }
+
+  async removeChat(id: string): Promise<ChatSummary[]> {
+    if (this.bridge) return this.bridge.chats.remove(id);
+    localStorage.setItem(DEV_CHATS_KEY, JSON.stringify(this.devChats().filter((c) => c.id !== id)));
+    return this.listChats();
   }
 
   // --- scheduled interviews ----------------------------------------------------
@@ -241,5 +290,6 @@ export class BridgeService {
     localStorage.removeItem(DEV_SESSIONS_KEY);
     localStorage.removeItem(DEV_WORDS_KEY);
     localStorage.removeItem(DEV_SCHEDULE_KEY);
+    localStorage.removeItem(DEV_CHATS_KEY);
   }
 }

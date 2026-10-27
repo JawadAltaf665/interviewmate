@@ -124,7 +124,7 @@ export class SettingsComponent implements OnInit {
   }
 
   async clearAll(): Promise<void> {
-    if (!window.confirm('Clear ALL local data — saved credentials, settings, and saved sessions? This cannot be undone.')) return;
+    if (!window.confirm('Clear ALL local data — saved credentials, settings, saved sessions and Coach chats? This cannot be undone.')) return;
     try {
       await this.bridge.clearAllData();
       this.message.set('All local data cleared.');

@@ -2,6 +2,18 @@
 
 Every version listed here has a Windows portable build on the [Releases](../../releases) page.
 
+## v1.11.0: Coach chat
+- **New Coach chat** that helps you understand your feedback and decide what to improve, using your real results.
+  - **Ask Coach** button on every page opens a side panel; the new **Coach** tab shows the chat full width with your saved chats.
+  - **Discuss with Coach** buttons on Feedback (latest result and each saved interview) and Reports.
+  - Answers in English, Urdu or Roman Urdu. Type, or use the **microphone** (up to 60 s, turned into text you can check). **Listen** reads a reply aloud.
+- **Reads your data through functions.** It lists and reads saved interviews (the transcript only when needed), builds progress reports with recurring strengths and weaknesses, and checks your schedule and saved words. Chips under each reply show what it read.
+- **Acts only after you confirm.** Open a page, prepare an interview (fills in New Interview), schedule, reschedule or remove an interview, save words, practise words in Vocabulary, or save a report as PDF. Each shows a **Confirm / Cancel** card first.
+- **Deliberately can't:** see API keys, delete interviews, clear data, turn on paid usage, change settings, or start the microphone or camera.
+- **Practice focus** field on New Interview: topics the interviewer should lean towards. The Coach can fill it in; it is saved with scheduled interviews.
+- Chats are saved in `chats.json` (latest 50). **Clear local data** removes them too.
+- Uses the same free models and key failover as feedback (Gemini 3.8 Flash, then 3.5 Flash-Lite).
+
 ## v1.10.0: interviews survive tab switches, plus scheduled interviews
 - **Fix: switching tabs no longer ends a running interview.**
   - Cause: the interview room was a normal page. Leaving the page destroyed it, and its clean-up closed the Gemini Live connection, the microphone and the camera.

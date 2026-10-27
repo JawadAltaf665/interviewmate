@@ -15,6 +15,7 @@
   @if (state.live()) {
     <p class="notice warn" role="status">An interview is running right now. <a class="ml-1" routerLink="/interview">Return to it</a> — you can still schedule another one here.</p>
   }
+  @if (prefilled()) { <p class="notice" role="status">The Coach filled in this form for you. Check it, then begin or schedule the interview.</p> }
   @if (formError()) { <p class="notice error" role="alert">{{ formError() }}</p> }
 
   <div class="setup-grid">
@@ -116,6 +117,11 @@
             <input id="role" type="text" [ngModel]="role()" (ngModelChange)="role.set($event)" name="role" placeholder="e.g. Junior Angular Developer" />
           </div>
         </div>
+        <div class="field">
+          <label for="focus">Practice focus <span class="muted">(optional)</span></label>
+          <input id="focus" type="text" maxlength="300" [ngModel]="focus()" (ngModelChange)="focus.set($event)" name="focus" placeholder="e.g. Shorter answers with one concrete example" />
+          <p class="hint">The interviewer leans its questions toward this area. The Coach can fill it in from your feedback.</p>
+        </div>
         <div class="grid gap-x-4 sm:grid-cols-2">
           <div class="field">
             <label for="language">Interview language</label>
@@ -209,6 +215,7 @@
         <div><dt>Mode</dt><dd>{{ mode() === 1 ? 'Voice + preview' : 'Voice + coaching' }}</dd></div>
         <div><dt>CV</dt><dd>{{ cvFileName() ? 'Attached' : 'General mode' }}</dd></div>
         <div><dt>Duration</dt><dd>{{ durationMin() }} min</dd></div>
+        @if (focus().trim()) { <div><dt>Focus</dt><dd>{{ focus().trim() }}</dd></div> }
         <div><dt>Language</dt><dd>{{ language() }}</dd></div>
         <div><dt>Transcript</dt><dd>{{ transcriptLanguage() }}</dd></div>
         <div><dt>Answers end</dt><dd>{{ answerMode() === 'manual' ? 'On "Done"' : pauseSec() + 's pause' }}</dd></div>

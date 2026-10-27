@@ -1,4 +1,5 @@
 import { Component, computed, ElementRef, HostListener, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { BridgeService } from '../../core/bridge.service';
 import {
   SavedWord, VocabParagraph, VocabPrefs, VocabSpeed, VocabVoice, VocabWord,
@@ -29,6 +30,9 @@ interface Card {
 })
 export class VocabularyComponent implements OnInit, OnDestroy {
   private readonly bridge = inject(BridgeService);
+  private readonly route = inject(ActivatedRoute);
+  /** Last Coach practice request handled (?practice=a|b&t=…). */
+  private practiceStamp = '';
   readonly speech = inject(SpeechService);
   private readonly reader = viewChild<ElementRef<HTMLElement>>('reader');
 
@@ -74,7 +78,17 @@ export class VocabularyComponent implements OnInit, OnDestroy {
     const [settings, saved] = await Promise.all([this.bridge.getSettings(), this.bridge.listWords().catch(() => [])]);
     this.prefs.set({ ...DEFAULT_PREFS, ...settings.vocab });
     this.saved.set(saved);
-    if (!this.paragraph()) void this.newParagraph();
+    // The Coach can open this page with words to practise; otherwise start with a fresh paragraph.
+    this.route.queryParamMap.subscribe((q) => {
+      const words = (q.get('practice') ?? '').split('|').map((w) => w.trim()).filter(Boolean).slice(0, 6);
+      const stamp = `${q.get('practice')}#${q.get('t')}`;
+      if (words.length && stamp !== this.practiceStamp) {
+        this.practiceStamp = stamp;
+        void this.newParagraph(words);
+      } else if (!this.paragraph() && !this.generating()) {
+        void this.newParagraph();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -88,14 +102,15 @@ export class VocabularyComponent implements OnInit, OnDestroy {
     if (key === 'voice') this.speech.stop(); // the next play uses the new voice
   }
 
-  async newParagraph(): Promise<void> {
+  /** A new practice paragraph; `words` (from the Coach) replaces the saved-word pick. */
+  async newParagraph(words?: string[]): Promise<void> {
     const p = this.prefs();
     this.speech.stop();
     this.generating.set(true);
     this.paraError.set('');
     this.selection.set(null);
     try {
-      const includeWords = p.useSaved ? pickPracticeWords(this.saved()) : [];
+      const includeWords = words ?? (p.useSaved ? pickPracticeWords(this.saved()) : []);
       this.paragraph.set(await this.bridge.vocabParagraph({
         topic: p.topic, level: p.level, length: p.length, urdu: p.urdu,
         includeWords, avoidTitle: this.paragraph()?.title,

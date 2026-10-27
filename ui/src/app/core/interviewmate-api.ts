@@ -187,6 +187,73 @@ export interface ScheduledInterview {
   remindedDue?: boolean;
 }
 
+// --- Coach chat (v1.11+) ------------------------------------------------------
+
+/** One part of a Gemini message. Model parts are sent back unchanged (they carry thought signatures). */
+export interface CoachPart {
+  text?: string;
+  thought?: boolean;
+  thoughtSignature?: string;
+  functionCall?: { name: string; args: Record<string, unknown>; id?: string };
+  functionResponse?: { name: string; response: Record<string, unknown>; id?: string };
+}
+
+export interface CoachContent {
+  role: 'user' | 'model';
+  parts: CoachPart[];
+}
+
+export interface CoachToolDeclaration {
+  name: string;
+  description: string;
+  parameters?: Record<string, unknown>;
+}
+
+export interface CoachTurnResult {
+  content: CoachContent;
+  text: string;
+  functionCalls: { name: string; args: Record<string, unknown>; id?: string }[];
+  finishReason: string;
+  model: string;
+}
+
+/** An action the coach proposed, shown as a Confirm / Cancel card. */
+export interface CoachAction {
+  name: string;
+  title: string;
+  lines: string[];
+  confirmLabel: string;
+  status: 'pending' | 'done' | 'cancelled' | 'failed';
+  note?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'coach' | 'error';
+  text: string;
+  at: string;
+  /** "Read 7 interviews", shown as small chips above a coach reply. */
+  steps?: string[];
+  actions?: CoachAction[];
+}
+
+export interface ChatSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  count: number;
+}
+
+export interface ChatRecord {
+  id?: string;
+  title: string;
+  createdAt?: string;
+  updatedAt?: string;
+  messages: ChatMessage[];
+  contents: CoachContent[];
+}
+
 export interface InterviewMateBridge {
   getAppInfo(): Promise<AppInfo>;
   /** Theme saved in the desktop settings file, for the first paint. */
@@ -226,6 +293,16 @@ export interface InterviewMateBridge {
     }): Promise<VocabParagraph>;
     explain(input: { text: string; context?: string; urdu: boolean }): Promise<VocabWord & { model?: string }>;
     speak(input: { text: string; voice: Exclude<VocabVoice, 'offline'> }): Promise<SpokenAudio>;
+  };
+  coach: {
+    turn(input: { system: string; contents: CoachContent[]; tools: CoachToolDeclaration[]; pinModel?: string }): Promise<CoachTurnResult>;
+    transcribe(input: { audioBase64: string }): Promise<{ text: string; model: string }>;
+  };
+  chats: {
+    list(): Promise<ChatSummary[]>;
+    get(id: string): Promise<ChatRecord | null>;
+    save(chat: ChatRecord): Promise<ChatRecord>;
+    remove(id: string): Promise<ChatSummary[]>;
   };
   schedule: {
     list(): Promise<ScheduledInterview[]>;

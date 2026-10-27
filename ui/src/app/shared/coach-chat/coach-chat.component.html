@@ -1,0 +1,162 @@
+<div class="coach" [class.page-layout]="layout() === 'page'">
+  @if (layout() === 'page') {
+    <aside class="history-col" aria-label="Your chats">
+      <button class="btn small new-chat" type="button" (click)="newChat()" [disabled]="coach.busy()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New chat
+      </button>
+      <ul class="chat-list">
+        @for (c of coach.chats(); track c.id) {
+          <li [class.active]="c.id === coach.chatId()">
+            <button type="button" class="chat-link" (click)="openChat(c.id)" [title]="c.title">
+              <span class="chat-title">{{ c.title }}</span>
+              <span class="chat-when">{{ when(c.updatedAt) }}</span>
+            </button>
+            <button type="button" class="icon-btn del" (click)="coach.deleteChat(c.id)" title="Delete chat" aria-label="Delete chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
+            </button>
+          </li>
+        } @empty {
+          <li class="none">Your chats will show here.</li>
+        }
+      </ul>
+    </aside>
+  }
+
+  <section class="conversation">
+    <header class="chat-head">
+      <span class="coach-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12Z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>
+      </span>
+      <div class="head-text">
+        <strong>Coach</strong>
+        <span class="head-title">{{ coach.title() }}</span>
+      </div>
+      @if (layout() === 'panel') {
+        <button type="button" class="icon-btn" (click)="newChat()" [disabled]="coach.busy()" title="New chat" aria-label="New chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button type="button" class="icon-btn" [class.on]="showHistory()" (click)="toggleHistory()" title="Your chats" aria-label="Your chats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+        </button>
+        <button type="button" class="icon-btn" (click)="expand()" title="Open the Coach page" aria-label="Open the Coach page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+        </button>
+        <button type="button" class="icon-btn" (click)="coach.close()" title="Close" aria-label="Close the Coach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      }
+    </header>
+
+    @if (showHistory() && layout() === 'panel') {
+      <ul class="chat-list popover">
+        @for (c of coach.chats(); track c.id) {
+          <li [class.active]="c.id === coach.chatId()">
+            <button type="button" class="chat-link" (click)="openChat(c.id)" [title]="c.title">
+              <span class="chat-title">{{ c.title }}</span>
+              <span class="chat-when">{{ when(c.updatedAt) }}</span>
+            </button>
+            <button type="button" class="icon-btn del" (click)="coach.deleteChat(c.id)" title="Delete chat" aria-label="Delete chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
+            </button>
+          </li>
+        } @empty {
+          <li class="none">No saved chats yet.</li>
+        }
+      </ul>
+    }
+
+    <div class="messages" #scroller aria-live="polite">
+      @if (!coach.messages().length) {
+        <div class="welcome">
+          <p class="welcome-title">Hi, I'm your interview coach.</p>
+          <p>I can read your saved interviews, reports, schedule and words, then help you decide what to improve and how. I can also set up or schedule practice for you; you confirm every action first.</p>
+          <div class="suggestions">
+            @for (s of suggestions; track s) {
+              <button type="button" class="suggestion" (click)="send(s)">{{ s }}</button>
+            }
+          </div>
+        </div>
+      }
+
+      @for (m of coach.messages(); track m.id) {
+        @if (m.role === 'user') {
+          <div class="msg user" dir="auto">{{ m.text }}</div>
+        } @else if (m.role === 'error') {
+          <div class="msg error" role="alert">{{ m.text }}</div>
+        } @else {
+          <div class="msg coach-msg">
+            @if (m.steps?.length) {
+              <div class="steps">
+                @for (s of m.steps; track $index) {
+                  <span class="step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>{{ s }}</span>
+                }
+              </div>
+            }
+            @for (a of m.actions; track $index; let i = $index) {
+              <div class="action" [class]="'action ' + a.status">
+                <p class="action-title">{{ a.title }}</p>
+                @for (l of a.lines; track $index) { <p class="action-line" dir="auto">{{ l }}</p> }
+                @if (isPending(m.id, i)) {
+                  <div class="action-buttons">
+                    <button class="btn small" type="button" (click)="coach.answer(true)">{{ a.confirmLabel }}</button>
+                    <button class="btn small secondary" type="button" (click)="coach.answer(false)">Cancel</button>
+                  </div>
+                } @else {
+                  <p class="action-status">
+                    @switch (a.status) {
+                      @case ('done') { Done{{ a.note ? ' · ' + a.note : '' }} }
+                      @case ('cancelled') { Cancelled }
+                      @case ('failed') { Didn't work: {{ a.note }} }
+                      @default { Waiting… }
+                    }
+                  </p>
+                }
+              </div>
+            }
+            @if (m.text) {
+              <div class="reply" dir="auto">
+                @for (b of blocks(m); track $index) {
+                  @switch (b.kind) {
+                    @case ('ul') { <ul>@for (line of b.lines; track $index) { <li>@for (seg of line; track $index) {<span [class.b]="seg.bold" [class.i]="seg.italic" [class.code]="seg.code">{{ seg.text }}</span>}</li> }</ul> }
+                    @case ('ol') { <ol>@for (line of b.lines; track $index) { <li>@for (seg of line; track $index) {<span [class.b]="seg.bold" [class.i]="seg.italic" [class.code]="seg.code">{{ seg.text }}</span>}</li> }</ol> }
+                    @default { @for (line of b.lines; track $index) { <p>@for (seg of line; track $index) {<span [class.b]="seg.bold" [class.i]="seg.italic" [class.code]="seg.code">{{ seg.text }}</span>}</p> } }
+                  }
+                }
+              </div>
+              <button type="button" class="speak" (click)="coach.speak(m)" [title]="coach.speakingId() === m.id ? 'Stop reading' : 'Read aloud'">
+                @if (coach.speakingId() === m.id) {
+                  <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg> Stop
+                } @else {
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg> Listen
+                }
+              </button>
+            } @else if (coach.busy() && $last) {
+              <div class="thinking"><span></span><span></span><span></span> {{ coach.pending() ? 'Waiting for you to confirm' : 'Thinking' }}</div>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <footer class="composer">
+      @if (coach.speech.note() && coach.speakingId()) { <p class="note">{{ coach.speech.note() }}</p> }
+      @if (coach.voiceNote()) { <p class="note">{{ coach.voiceNote() }}</p> }
+      @if (coach.pending()) { <p class="note">Confirm or cancel the action above to continue.</p> }
+      <div class="input-row">
+        <textarea rows="1" [ngModel]="coach.draft()" (ngModelChange)="coach.draft.set($event)" (keydown)="onKey($event)"
+                  [placeholder]="coach.transcribing() ? 'Turning your voice into text…' : 'Ask about your feedback…'"
+                  aria-label="Message the coach" dir="auto"></textarea>
+        <button type="button" class="icon-btn mic" [class.rec]="coach.recording()" (click)="coach.toggleRecording()"
+                [disabled]="coach.transcribing()" [title]="coach.recording() ? 'Stop and use what I said' : 'Speak your question'"
+                [attr.aria-label]="coach.recording() ? 'Stop recording' : 'Speak your question'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+        </button>
+        <button type="button" class="icon-btn send" (click)="send()" [disabled]="coach.busy() || !coach.draft().trim()" title="Send" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+      <p class="fine">Coach uses your Gemini key. It reads only what a question needs; you confirm every action.</p>
+    </footer>
+  </section>
+</div>

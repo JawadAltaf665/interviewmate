@@ -49,8 +49,8 @@ This runs both suites:
 
 | Suite | Command | Count |
 |---|---|---|
-| Electron services | `npm run test:electron` (Node's built-in test runner, `electron/**/*.test.cjs`) | 53 tests |
-| Angular | `npm run test:ui` (Vitest via the Angular CLI, `ui/src/**/*.spec.ts`) | 45 tests |
+| Electron services | `npm run test:electron` (Node's built-in test runner, `electron/**/*.test.cjs`) | 59 tests |
+| Angular | `npm run test:ui` (Vitest via the Angular CLI, `ui/src/**/*.spec.ts`) | 67 tests |
 
 `npm run verify` runs all tests and then a production build.
 
@@ -102,16 +102,18 @@ interviewmate/
 │       ├── session-store.cjs
 │       ├── word-store.cjs
 │       ├── schedule-store.cjs
+│       ├── chat-store.cjs
 │       └── *.test.cjs
 ├── ui/
 │   └── src/app/
 │       ├── app.ts / app.html   # shell: sidebar, banners, hosted interview room
 │       ├── app.routes.ts
 │       ├── core/               # live-session, prompt, cv, feedback-local, report,
-│       │                       # vocab, speech, schedule, session-state, bridge, theme
+│       │                       # vocab, speech, schedule, session-state, bridge, theme,
+│       │                       # coach (loop), coach-tools (functions), coach.service
 │       ├── features/           # dashboard, interview-setup, interview-hub, interview-room,
-│       │                       # feedback, reports, vocabulary, settings
-│       └── shared/             # avatar, bg-picker
+│       │                       # feedback, reports, vocabulary, coach, settings
+│       └── shared/             # avatar, bg-picker, coach-chat
 ├── docs/                       # this documentation + screenshots + history/
 ├── CHANGELOG.md
 └── package.json                # scripts + electron-builder config

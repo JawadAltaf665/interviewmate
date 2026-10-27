@@ -3,14 +3,16 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs';
 import { BridgeService } from './core/bridge.service';
+import { CoachService } from './core/coach.service';
 import { relativeTime } from './core/schedule';
 import { ScheduleService } from './core/schedule.service';
 import { SessionStateService } from './core/session-state.service';
 import { InterviewRoomComponent } from './features/interview-room/interview-room.component';
+import { CoachChatComponent } from './shared/coach-chat/coach-chat.component';
 import { ThemeService } from './core/theme.service';
 
 @Component({
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, InterviewRoomComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, InterviewRoomComponent, CoachChatComponent],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
@@ -23,12 +25,19 @@ export class App implements OnInit {
   protected readonly version = signal('');
   protected readonly state = inject(SessionStateService);
   protected readonly schedule = inject(ScheduleService);
+  protected readonly coach = inject(CoachService);
   private readonly url = toSignal(
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd), map((e) => e.urlAfterRedirects)),
     { initialValue: this.router.url },
   );
   /** The Interview tab is showing: the hosted interview room is visible. */
   protected readonly onInterview = computed(() => this.url().split(/[?#]/)[0] === '/interview');
+  /** The Coach panel and its button stay away from the Coach page and the live interview room. */
+  protected readonly coachAllowed = computed(() => {
+    const path = this.url().split(/[?#]/)[0];
+    return path !== '/coach' && !(this.onInterview() && this.state.roomOpen());
+  });
+  protected readonly coachDocked = computed(() => this.coachAllowed() && this.coach.panelOpen());
   protected readonly scheduledCount = computed(() => this.schedule.buckets().upcoming.length + this.schedule.buckets().due.length);
 
   ngOnInit(): void {

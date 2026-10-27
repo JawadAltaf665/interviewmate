@@ -40,6 +40,18 @@ contextBridge.exposeInMainWorld('interviewMate', {
     speak: (payload) => ipcRenderer.invoke('vocab:speak', payload),
   },
 
+  coach: {
+    turn: (payload) => ipcRenderer.invoke('coach:turn', payload),
+    transcribe: (payload) => ipcRenderer.invoke('coach:transcribe', payload),
+  },
+
+  chats: {
+    list: () => ipcRenderer.invoke('chats:list'),
+    get: (id) => ipcRenderer.invoke('chats:get', id),
+    save: (chat) => ipcRenderer.invoke('chats:save', chat),
+    remove: (id) => ipcRenderer.invoke('chats:remove', id),
+  },
+
   schedule: {
     list: () => ipcRenderer.invoke('schedule:list'),
     save: (item) => ipcRenderer.invoke('schedule:save', item),

@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { VocabularyComponent } from './vocabulary.component';
 
 describe('VocabularyComponent', () => {
   it('underlines key words and opens their meaning card', async () => {
     localStorage.clear();
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(VocabularyComponent);
     const cmp = fixture.componentInstance;
     cmp.paragraph.set({

@@ -2,7 +2,7 @@
 
 **Practise job interviews out loud with an AI interviewer, then see exactly what to improve.**
 
-InterviewMate is a Windows desktop app. It runs a spoken mock interview with a Google Gemini interviewer. The interviewer listens to your answers, asks natural follow-up questions, and grades your real transcript at the end. It also has progress reports, a scheduler with reminders, and an English vocabulary trainer with read-aloud and meanings.
+InterviewMate is a Windows desktop app. It runs a spoken mock interview with a Google Gemini interviewer. The interviewer listens to your answers, asks natural follow-up questions, and grades your real transcript at the end. It also has a **Coach chat** that reads your results and helps you decide what to improve, progress reports, a scheduler with reminders, and an English vocabulary trainer with read-aloud and meanings.
 
 It is **local-first**: no account, no cloud backend, no subscription. You bring a free Google AI Studio API key, and everything else (sessions, scores, saved words, your schedule) stays in files on your own computer.
 
@@ -27,6 +27,7 @@ InterviewMate was built to close those gaps for one person preparing for develop
 | Practising alone feels unrealistic | A named interviewer greets you like a real call, asks one question at a time and follows up on your answers by voice. |
 | Generic questions don't match your experience | Attach your CV (PDF/DOCX). Questions stay grounded in the skills and projects it actually lists. |
 | You don't know what went wrong | Feedback from your real transcript: scores for relevance, clarity and technical depth, strengths, areas to improve and practice questions. |
+| Feedback is hard to turn into action | The **Coach** chat reads your saved interviews and reports, explains your scores, drills you on weak answers and can set up or schedule the next practice for you (you confirm every action). |
 | You can't tell if you're improving | Reports combine interviews over 1 day to 3 months (or a custom range) with trends, averages and an optional AI coaching summary, and export to PDF. |
 | You skip practice | Schedule interviews for an exact date and time, with reminders. |
 | English vocabulary holds you back | A Vocabulary tab writes practice paragraphs, reads them aloud at three speeds, highlights each sentence as it is read, and explains any word or sentence you select (optionally in Urdu). |
@@ -46,6 +47,7 @@ InterviewMate was built to close those gaps for one person preparing for develop
 | 📊 | **Feedback** | Scores, strengths, improvements and practice questions from your transcript. Translated transcript (English / اردو). Saved history. |
 | 📈 | **Reports and PDF** | Progress over a period, with KPI tiles, trend chart, skill averages, AI summary and A4 PDF export. |
 | 📚 | **Vocabulary trainer** | AI paragraphs with key words, read-aloud at Slow, Medium or Fast speed, sentence highlighting, select-to-explain, Urdu meanings and a saved word list. |
+| 💬 | **Coach chat** | Ask about your feedback in English or Urdu, by typing or speaking. It reads only what a question needs (interviews, reports, schedule, words), answers from that data, and can open pages, prepare or schedule interviews, save words and export reports after you press **Confirm**. Side panel on every page, or a full Coach tab with saved chats. |
 | 🔑 | **Multiple API keys and failover** | Add several keys; when one runs out of quota, the app moves to the next. |
 | 🌗 | **Light and dark theme** | Remembered between launches. |
 
@@ -63,6 +65,10 @@ Full details, including how each feature works and why it is built that way, are
 <tr>
 <td colspan="2"><img src="docs/screenshots/vocabulary.png" alt="Vocabulary practice"></td>
 </tr>
+<tr>
+<td><img src="docs/screenshots/coach-panel.png" alt="Coach side panel answering from saved interviews"></td>
+<td><img src="docs/screenshots/coach-confirm.png" alt="Coach asking to confirm a scheduled interview"></td>
+</tr>
 </table>
 
 ---
@@ -77,7 +83,7 @@ Full details, including how each feature works and why it is built that way, are
 
 Step-by-step instructions are in the **[User guide](docs/USER_GUIDE.md)**.
 
-Every version from v1.1.0 to v1.10.0 is published as its own release, so you can go back to an older build if you need to. What changed in each one is in **[CHANGELOG.md](CHANGELOG.md)**.
+Every version from v1.1.0 to v1.11.0 is published as its own release, so you can go back to an older build if you need to. What changed in each one is in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -89,7 +95,7 @@ Every version from v1.1.0 to v1.10.0 is published as its own release, so you can
 │  Angular UI (renderer, sandboxed)      preload.cjs       Main process        │
 │  ─────────────────────────────────    ─────────────     ──────────────────   │
 │  Setup · Interview · Feedback ·  ◄──► narrow, typed ◄──► API keys (encrypted)│
-│  Reports · Vocabulary · Settings       IPC bridge        Gemini REST calls   │
+│  Reports · Vocab · Coach · Settings    IPC bridge        Gemini REST calls   │
 │        │                                                 JSON files on disk  │
 │        │ short-lived token only                          reminders, PDF      │
 └────────┼─────────────────────────────────────────────────────────┼───────────┘
@@ -98,7 +104,7 @@ Every version from v1.1.0 to v1.10.0 is published as its own release, so you can
 ```
 
 - Your API key never reaches the web page. The main process mints a single-use, short-lived token for the voice session.
-- Feedback, translations, reports, vocabulary and speech go through the main process, which falls back across free models and keys.
+- Feedback, translations, reports, vocabulary, Coach chat and speech go through the main process, which falls back across free models and keys.
 - All data is saved as JSON in `%APPDATA%\interviewmate`.
 
 The full explanation is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
@@ -114,7 +120,7 @@ The full explanation is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Electron/Angular structure, IPC, Gemini models and fallback, storage |
 | [docs/PRIVACY_AND_SECURITY.md](docs/PRIVACY_AND_SECURITY.md) | What is stored, what is sent to Google, and how keys are protected |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Build from source, run tests, package a release |
-| [CHANGELOG.md](CHANGELOG.md) | Version history v1.1.0 to v1.10.0 |
+| [CHANGELOG.md](CHANGELOG.md) | Version history v1.1.0 to v1.11.0 |
 | [docs/history/](docs/history/) | Original build reports from the first versions |
 
 ---

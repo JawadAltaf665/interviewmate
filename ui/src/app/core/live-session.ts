@@ -145,6 +145,7 @@ export class LiveSession {
           candidateName: this.config.candidateName,
           interviewerName: this.config.interviewerName,
           durationMin: this.config.durationMin,
+          focus: this.config.focus,
         }),
         // Language hints: Urdu interviews are often code-switched with English.
         inputAudioTranscription: transcriptionConfig(this.config.language),

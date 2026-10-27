@@ -29,7 +29,12 @@ export interface InterviewConfig {
   /** auto: the interviewer replies after a pause of pauseSec; manual: after "Done answering". */
   answerMode: 'auto' | 'manual';
   pauseSec: number;
+  /** Topics to concentrate on (typed on Setup, or proposed by the Coach). */
+  focus?: string;
 }
+
+/** Setup fields the Coach fills in before opening the New Interview page. */
+export type SetupDraft = Partial<Pick<InterviewConfig, 'level' | 'role' | 'durationMin' | 'language' | 'answerMode' | 'focus'>>;
 
 @Injectable({ providedIn: 'root' })
 export class SessionStateService {
@@ -44,6 +49,8 @@ export class SessionStateService {
   readonly live = signal(false);
   /** "12:31 left", for the banner shown on other tabs during a live interview. */
   readonly remainingLabel = signal('');
+  /** Read once by the Setup page (Coach → "Set up interview"). */
+  readonly setupDraft = signal<SetupDraft | null>(null);
 
   /** Hand a config to the interview room (from Setup or a scheduled interview). */
   openRoom(config: InterviewConfig): void {

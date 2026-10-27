@@ -6,6 +6,7 @@
       <p class="lede">All your saved interviews in one report. Pick a period, add an optional AI summary, and save it as a PDF.</p>
     </div>
     <div class="row no-print">
+      <button class="btn secondary" type="button" (click)="discuss()" [disabled]="!report().sessions.length" title="Talk this period through with the Coach">Discuss with Coach</button>
       <button class="btn secondary" type="button" (click)="summarize()" [disabled]="summarizing() || !report().scoredCount">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
         {{ summarizing() ? 'Summarizing…' : summary() ? 'Regenerate AI summary' : 'AI summary' }}

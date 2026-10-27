@@ -510,6 +510,57 @@ function createGeminiClient({ getCredentialsInOrder, onStatus, fetchImpl, sleepI
     },
 
     /**
+     * Coach chat: one model step with function calling. The renderer owns the
+     * conversation loop (it runs the app tools and asks the user to confirm
+     * actions); this only validates the request and calls Gemini. `pinModel`
+     * keeps the later steps of one answer on the model that started it, since
+     * Gemini 3 checks the thought signatures it handed back.
+     */
+    async coachTurn({ system, contents, tools, textModel, allowPaidUsage, pinModel } = {}) {
+      const model = assertTextModel(textModel, allowPaidUsage);
+      const body = JSON.stringify({
+        systemInstruction: { parts: [{ text: String(system || '').slice(0, MAX_COACH_SYSTEM_CHARS) }] },
+        contents: cleanCoachContents(contents),
+        tools: [{ functionDeclarations: cleanCoachTools(tools) }],
+        toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+        generationConfig: { thinkingConfig: { thinkingLevel: 'LOW' } },
+      });
+      const step = (m) => withFailover(async (secret) => {
+        const json = await request(secret, `${API_BASE}/models/${m}:generateContent`, { method: 'POST', body });
+        return parseCoachReply(json);
+      }, m);
+      if (pinModel) {
+        const chain = [...new Set([model, ...FREE_MODELS.text])];
+        if (!chain.includes(pinModel)) throw new Error('coachTurn: that model is not allowed.');
+        const { result } = await step(pinModel);
+        return { ...result, model: pinModel };
+      }
+      const { result, usedModel } = await withModelFallback(model, step);
+      return { ...result, model: usedModel };
+    },
+
+    /** Coach chat voice input: a short WAV recording -> what was said. */
+    async transcribeAudio({ audioBase64 } = {}) {
+      if (typeof audioBase64 !== 'string' || !audioBase64) throw new Error('transcribeAudio: no recording.');
+      if (audioBase64.length > MAX_AUDIO_BASE64_CHARS) throw new Error('transcribeAudio: the recording is too long (max about 1 minute).');
+      const prompt =
+        'Transcribe this recording exactly as spoken. The speaker may use English, Urdu, or a mix: write each word in the language it was spoken in ' +
+        '(Urdu in Urdu script, English and technical terms in English). Reply with the transcript text only, no quotes or notes. ' +
+        'If there is no speech, reply with nothing.';
+      const { result, usedModel } = await withModelFallback(FAST_TEXT_MODEL, (m) => withFailover(async (secret) => {
+        const json = await request(secret, `${API_BASE}/models/${m}:generateContent`, {
+          method: 'POST',
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'audio/wav', data: audioBase64 } }] }],
+            generationConfig: { thinkingConfig: { thinkingLevel: 'LOW' } },
+          }),
+        });
+        return extractText(json);
+      }, m));
+      return { text: result, model: usedModel };
+    },
+
+    /**
      * Read text aloud with a Gemini voice. Returns WAV audio as base64; speed is
      * applied by the player (playbackRate), so one clip serves all speeds.
      */
@@ -550,6 +601,87 @@ function createGeminiClient({ getCredentialsInOrder, onStatus, fetchImpl, sleepI
       }
     },
   };
+}
+
+// --------------------------------------------------------------- coach chat
+// The renderer builds the conversation; these keep what it sends small and in
+// the shape Gemini expects, and drop anything else.
+const MAX_COACH_SYSTEM_CHARS = 20_000;
+const MAX_COACH_CONTENTS = 120;
+const MAX_COACH_PARTS = 40;
+const MAX_COACH_CHARS = 400_000;
+const MAX_COACH_TOOLS = 30;
+const MAX_AUDIO_BASE64_CHARS = 4_000_000; // ~1 min of 16 kHz mono WAV
+const TOOL_NAME = /^[a-z][a-z0-9_]{0,63}$/;
+
+function plainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+function cleanCoachPart(p) {
+  if (!plainObject(p)) throw new Error('coachTurn: each part must be an object.');
+  const out = {};
+  if (typeof p.text === 'string') out.text = p.text.slice(0, 40_000);
+  if (p.thought === true) out.thought = true;
+  if (typeof p.thoughtSignature === 'string') out.thoughtSignature = p.thoughtSignature.slice(0, 50_000);
+  for (const key of ['functionCall', 'functionResponse']) {
+    const f = p[key];
+    if (f === undefined) continue;
+    if (!plainObject(f) || typeof f.name !== 'string' || !TOOL_NAME.test(f.name)) throw new Error(`coachTurn: bad ${key}.`);
+    const payload = key === 'functionCall' ? f.args : f.response;
+    out[key] = { name: f.name, [key === 'functionCall' ? 'args' : 'response']: plainObject(payload) ? payload : {} };
+    if (typeof f.id === 'string') out[key].id = f.id.slice(0, 200);
+  }
+  if (!Object.keys(out).length) throw new Error('coachTurn: empty part.');
+  return out;
+}
+
+function cleanCoachContents(contents) {
+  if (!Array.isArray(contents) || !contents.length) throw new Error('coachTurn: the conversation is empty.');
+  if (contents.length > MAX_COACH_CONTENTS) throw new Error('coachTurn: the conversation is too long.');
+  const out = contents.map((c) => {
+    if (!plainObject(c) || (c.role !== 'user' && c.role !== 'model')) throw new Error('coachTurn: each message needs role "user" or "model".');
+    if (!Array.isArray(c.parts) || !c.parts.length || c.parts.length > MAX_COACH_PARTS) throw new Error('coachTurn: each message needs parts.');
+    return { role: c.role, parts: c.parts.map(cleanCoachPart) };
+  });
+  if (JSON.stringify(out).length > MAX_COACH_CHARS) throw new Error('coachTurn: the conversation is too long. Start a new chat.');
+  return out;
+}
+
+function cleanCoachTools(tools) {
+  if (!Array.isArray(tools) || tools.length > MAX_COACH_TOOLS) throw new Error('coachTurn: tools must be a short list.');
+  const out = tools.map((t) => {
+    if (!plainObject(t) || typeof t.name !== 'string' || !TOOL_NAME.test(t.name)) throw new Error('coachTurn: bad tool name.');
+    const decl = { name: t.name, description: String(t.description || '').slice(0, 1500) };
+    if (t.parameters !== undefined) {
+      if (!plainObject(t.parameters)) throw new Error('coachTurn: tool parameters must be an object.');
+      decl.parameters = t.parameters;
+    }
+    return decl;
+  });
+  if (JSON.stringify(out).length > 40_000) throw new Error('coachTurn: tool list is too large.');
+  return out;
+}
+
+/** One Gemini reply -> { content (to send back next step), text, functionCalls, finishReason }. */
+function parseCoachReply(json) {
+  const cand = json && json.candidates && json.candidates[0];
+  const parts = cand && cand.content && Array.isArray(cand.content.parts) ? cand.content.parts : [];
+  const kept = parts.filter(plainObject).map((p) => {
+    const out = {};
+    for (const key of ['text', 'thought', 'thoughtSignature', 'functionCall']) if (p[key] !== undefined) out[key] = p[key];
+    return out;
+  }).filter((p) => Object.keys(p).length);
+  const text = kept.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').trim();
+  const functionCalls = kept.filter((p) => plainObject(p.functionCall) && typeof p.functionCall.name === 'string')
+    .map((p) => ({ name: p.functionCall.name, args: plainObject(p.functionCall.args) ? p.functionCall.args : {}, ...(p.functionCall.id ? { id: p.functionCall.id } : {}) }));
+  if (!text && !functionCalls.length) {
+    const reason = (cand && cand.finishReason) || (json && json.promptFeedback && json.promptFeedback.blockReason) || 'no content';
+    const err = new Error(`Google returned an empty reply (${reason}).`);
+    err.kind = 'bad_response';
+    throw err;
+  }
+  return { content: { role: 'model', parts: kept }, text, functionCalls, finishReason: (cand && cand.finishReason) || '' };
 }
 
 /** Gemini TTS returns raw 16-bit PCM ("audio/L16;rate=24000") or WAV; always hand back WAV. */
@@ -687,6 +819,6 @@ function parseFeedbackJson(text) {
 }
 
 module.exports = {
-  createGeminiClient, assertFreeModel, assertTextModel, parseFeedbackJson, parseVocabParagraph, toWav,
+  createGeminiClient, assertFreeModel, assertTextModel, parseFeedbackJson, parseVocabParagraph, parseCoachReply, toWav,
   FREE_MODELS, TTS_VOICES, VOCAB_TOPICS, VOCAB_LEVELS, MAX_SPEAK_CHARS, PAID_MODELS, TEXT_MODEL, MAX_JPEG_BASE64_CHARS, API_BASE,
 };

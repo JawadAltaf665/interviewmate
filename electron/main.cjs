@@ -12,6 +12,7 @@ const { createSessionStore } = require('./services/session-store.cjs');
 const { createSettingsStore, VOCAB_CHOICES } = require('./services/settings-store.cjs');
 const { createWordStore } = require('./services/word-store.cjs');
 const { createScheduleStore } = require('./services/schedule-store.cjs');
+const { createChatStore } = require('./services/chat-store.cjs');
 const { createGeminiClient, assertFreeModel, FREE_MODELS } = require('./services/gemini.cjs');
 
 const isDev = !app.isPackaged;
@@ -31,6 +32,7 @@ let sessionStore = null;
 let settingsStore = null;
 let wordStore = null;
 let scheduleStore = null;
+let chatStore = null;
 let gemini = null;
 
 function initStores() {
@@ -48,6 +50,7 @@ function initStores() {
   settingsStore = createSettingsStore({ filePath: path.join(userData, 'settings.json') });
   wordStore = createWordStore({ filePath: path.join(userData, 'words.json') });
   scheduleStore = createScheduleStore({ filePath: path.join(userData, 'schedule.json') });
+  chatStore = createChatStore({ filePath: path.join(userData, 'chats.json') });
 
   gemini = createGeminiClient({
     // Enabled credentials, in stored order. The gemini client itself skips
@@ -336,6 +339,35 @@ function registerIpc() {
       voice: VOCAB_CHOICES.voice.includes(payload.voice) ? payload.voice : undefined,
     });
   });
+  // Coach chat. The page runs the conversation loop and the app tools; the
+  // model, key and paid opt-in always come from the user's settings here.
+  ipcMain.handle('coach:turn', async (_e, payload) => {
+    requireObject(payload, 'Payload');
+    const s = settingsStore.get();
+    return gemini.coachTurn({
+      system: optionalString(payload.system, 'System prompt', 20000),
+      contents: payload.contents,
+      tools: payload.tools,
+      pinModel: optionalString(payload.pinModel, 'Model', 100),
+      textModel: s.textModel, allowPaidUsage: s.allowPaidUsage,
+    });
+  });
+  ipcMain.handle('coach:transcribe', async (_e, payload) => {
+    requireObject(payload, 'Payload');
+    return gemini.transcribeAudio({ audioBase64: payload.audioBase64 });
+  });
+  ipcMain.handle('chats:list', () => chatStore.list());
+  ipcMain.handle('chats:get', (_e, id) => chatStore.get(requireId(id)));
+  ipcMain.handle('chats:save', (_e, chat) => {
+    requireObject(chat, 'Chat');
+    return chatStore.save(chat);
+  });
+  ipcMain.handle('chats:remove', (_e, id) => {
+    requireId(id);
+    chatStore.remove(id);
+    return chatStore.list();
+  });
+
   // Scheduled interviews
   ipcMain.handle('schedule:list', () => scheduleStore.list());
   ipcMain.handle('schedule:save', (_e, item) => {
@@ -395,11 +427,12 @@ function registerIpc() {
     return sessionStore.list();
   });
 
-  // Clear ALL local data: sessions + saved words + credentials + settings.
+  // Clear ALL local data: sessions, saved words, schedule, coach chats, credentials, settings.
   ipcMain.handle('data:clearAll', () => {
     sessionStore.clear();
     wordStore.clear();
     scheduleStore.clear();
+    chatStore.clear();
     credentialStore.clear();
     settingsStore.clear();
     return { ok: true };

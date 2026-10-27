@@ -34,6 +34,11 @@ export const routes: Routes = [
       import('./features/vocabulary/vocabulary.component').then((m) => m.VocabularyComponent),
   },
   {
+    path: 'coach',
+    loadComponent: () =>
+      import('./features/coach/coach.component').then((m) => m.CoachComponent),
+  },
+  {
     path: 'settings',
     loadComponent: () =>
       import('./features/settings/settings.component').then((m) => m.SettingsComponent),

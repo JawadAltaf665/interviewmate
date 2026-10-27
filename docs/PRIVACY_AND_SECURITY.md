@@ -11,6 +11,7 @@ InterviewMate is built for one person on one computer. It has no account, no ser
 | Settings | `settings.json` | No secrets. |
 | Saved words | `words.json` | |
 | Scheduled interviews | `schedule.json` | Includes the setup, such as the CV summary. |
+| Coach chats | `chats.json` | Your messages, the replies, and the data the Coach read to answer. |
 | Exported reports | The PDF path you choose | |
 
 **Settings → Clear local data** deletes all of the above, except PDFs you exported.
@@ -31,9 +32,12 @@ Some things are **never saved** by the app:
 | Mode 2 coaching (opt-in) | One still camera frame per interval | Video, audio from the frame |
 | Feedback / translation | The interview transcript | Audio, video |
 | Report AI summary | Saved scores and feedback text | Transcripts |
+| Coach chat | Your messages and earlier messages in that chat; the saved data a question needs (scores, feedback text, a transcript only when asked, your schedule, saved words, page name); your voice question as audio, only when you use the microphone | API keys, your CV file, camera or interview audio |
 | Vocabulary | Topic, level, your saved words (if "practise my saved words" is on), text you select for Speak or Meaning | Anything else |
 
 **Free-tier note:** Google's terms allow content sent on the free tier to be used to improve Google products, and it may be reviewed by people. Don't paste anything confidential into a mock interview. For stricter handling, use a key from a Google Cloud project with billing enabled. Paid-tier data isn't used for training under Google's terms, but usage is then billed.
+
+**Coach limits.** The Coach can only use the functions the app gives it. None of them reads API keys, deletes interviews, clears data, turns on paid usage, changes settings, or starts the microphone or camera for an interview. Every function that changes something waits for you to press **Confirm**. Function results are passed to the model as data, and its instructions say they are never commands.
 
 ## How keys are protected
 

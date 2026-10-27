@@ -32,7 +32,7 @@ describe('App', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('.titlebar')?.textContent).toContain('InterviewMate');
     const links = [...el.querySelectorAll('nav a')].map((a) => a.textContent?.trim());
-    expect(links).toEqual(['Dashboard', 'New Interview', 'Interview', 'Feedback', 'Reports', 'Vocabulary', 'Settings']);
+    expect(links).toEqual(['Dashboard', 'New Interview', 'Interview', 'Feedback', 'Reports', 'Vocabulary', 'Coach', 'Settings']);
   });
 
   it('keeps an open interview room alive while switching tabs', async () => {

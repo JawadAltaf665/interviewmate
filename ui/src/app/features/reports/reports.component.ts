@@ -1,8 +1,10 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { BridgeService } from '../../core/bridge.service';
+import { asReportRange } from '../../core/coach-tools';
+import { CoachService } from '../../core/coach.service';
 import { ReportSummary, SessionRecord } from '../../core/interviewmate-api';
 import {
   buildReport, overallScore, RANGE_OPTIONS, rangeBounds, ReportPoint, ReportRange, reportDigest,
@@ -26,6 +28,8 @@ const PAD = { left: 38, right: 16, top: 14, bottom: 32 };
 })
 export class ReportsComponent implements OnInit {
   private readonly bridge = inject(BridgeService);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly coach = inject(CoachService);
 
   readonly ranges = RANGE_OPTIONS;
   readonly range = signal<ReportRange>('7d');
@@ -73,7 +77,24 @@ export class ReportsComponent implements OnInit {
     };
   });
 
+  constructor() {
+    // The Coach's "save the report as a PDF": once the sessions are loaded, pick its period and export.
+    effect(() => {
+      const req = this.coach.reportExport();
+      if (!req || this.loading()) return;
+      untracked(() => {
+        this.coach.reportExport.set(null);
+        if (this.range() !== req.range) this.setRange(req.range);
+        setTimeout(() => void this.exportPdf().then(req.resolve));
+      });
+    });
+  }
+
   async ngOnInit(): Promise<void> {
+    this.route.queryParamMap.subscribe((q) => {
+      const r = q.get('range');
+      if (r && r !== this.range()) this.setRange(asReportRange(r));
+    });
     try {
       this.all.set(await this.bridge.listSessions());
     } catch {
@@ -107,8 +128,9 @@ export class ReportsComponent implements OnInit {
     }
   }
 
-  async exportPdf(): Promise<void> {
+  async exportPdf(): Promise<{ saved: boolean; path?: string; error?: string }> {
     const r = this.report();
+    if (!r.sessions.length) return { saved: false, error: 'There are no saved interviews in that period, so there is nothing to export.' };
     this.exporting.set(true);
     this.exportNote.set('');
     try {
@@ -117,11 +139,18 @@ export class ReportsComponent implements OnInit {
         this.exportedPath.set(result.path);
         this.exportNote.set(`Saved: ${result.path}`);
       }
+      return { saved: !!result.saved, path: result.path };
     } catch (err) {
-      this.exportNote.set(`Could not save the PDF (${err instanceof Error ? err.message : 'unknown error'}).`);
+      const message = err instanceof Error ? err.message : 'unknown error';
+      this.exportNote.set(`Could not save the PDF (${message}).`);
+      return { saved: false, error: message };
     } finally {
       this.exporting.set(false);
     }
+  }
+
+  discuss(): void {
+    this.coach.discussReport(this.range());
   }
 
   showFile(): void {

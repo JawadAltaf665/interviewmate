@@ -15,8 +15,9 @@ Contents:
 5. [Feedback](#5-feedback)
 6. [Reports](#6-reports)
 7. [Vocabulary](#7-vocabulary)
-8. [Settings and API keys](#8-settings-and-api-keys)
-9. [Theme, window and small things](#9-theme-window-and-small-things)
+8. [Coach chat](#8-coach-chat)
+9. [Settings and API keys](#9-settings-and-api-keys)
+10. [Theme, window and small things](#10-theme-window-and-small-things)
 
 ---
 
@@ -77,6 +78,7 @@ Contents:
 - **Duration:** 10, 15, 20 or 30 minutes.
 - **Interview language:** English or Urdu.
 - **Transcript and feedback language:** English or Urdu. The transcript is translated after the interview.
+- **Practice focus** (optional): topics the interviewer should lean towards, such as "STAR answers" or "SQL indexing". With a CV attached, questions still come only from the CV. The Coach can fill this in for you.
 - **Your name:** filled in from the CV and editable. The interviewer greets you by first name. With no name, it says "Hey there" and never makes one up.
 
 ### When you finish an answer
@@ -239,14 +241,47 @@ If no API key works yet, Setup offers a clearly labelled **Simulation mode**. It
 
 ---
 
-## 8. Settings and API keys
+## 8. Coach chat
+
+![Coach panel](screenshots/coach-panel.png)
+
+**What it does.** A chat with an interview coach that knows your results.
+- **Where:** the **Ask Coach** button opens a side panel on any page; the **Coach** tab shows the same chat full width with all your saved chats. **Discuss with Coach** buttons on Feedback (the latest result and each saved interview) and on Reports start a chat about that interview or period.
+- **Ask anything about your practice**, for example "What should I improve first?", "Why is my clarity score low?", "Make me a 7-day plan", "Rewrite my answer about my project using STAR" or "Ask me a practice question". It replies in English, Urdu or Roman Urdu, matching you.
+- **It reads your data, not guesses.** Small chips under a reply show what it read: "Read 3 interviews", "Built 30d report", "Read an interview transcript". It names the interviews it is talking about.
+- **It can act for you, but only after you confirm.** Each action appears as a card with **Confirm / Cancel**:
+  - open a page (for example a saved interview on Feedback, or Reports for a period);
+  - **prepare an interview**: fills in New Interview (level, role, length, language, practice focus); you still press Start;
+  - **schedule**, **reschedule** or **remove** a scheduled interview;
+  - **save words** to My words, or open Vocabulary with words to practise;
+  - **save the report as a PDF**.
+- **Voice:** the microphone button records your question (up to 60 s) and turns it into text for you to check before sending. **Listen** reads a reply aloud with your Vocabulary voice and speed.
+
+![Coach confirm card](screenshots/coach-confirm.png)
+
+**How it works.**
+- Gemini **function calling**: the app describes 14 functions (6 reads, 8 actions) to the model. The model decides which data it needs; the app runs the function and sends back the result. One message may take up to 6 such steps.
+- **Reads** (`list_interviews`, `get_interview`, `get_progress_report`, `list_scheduled`, `list_saved_words`, `get_app_status`) run straight away and only return what the question needs. A transcript is only read when asked for.
+- **Actions** always stop at a confirmation card. Nothing changes until you press the button, and a cancelled action is reported back to the model.
+- **Not possible at all:** seeing or changing API keys, deleting interviews, clearing data, turning on paid usage, changing settings, or starting the microphone or camera for an interview. Those functions simply don't exist.
+- Uses the same text model chain as feedback (Gemini 3.8 Flash, then 3.5 Flash-Lite) and the same key failover. Each answer stays on one model so Gemini's thought signatures stay valid.
+- Chats are saved in `chats.json` (the latest 50). **Clear local data** removes them.
+
+**Why it helps.**
+- Feedback lists what went wrong; the Coach helps you decide **what to fix first and how**, using patterns across all your interviews (for example "Use the STAR structure" appearing three times).
+- Practising one answer at a time with instant feedback is faster than waiting for the next full interview.
+- Turning advice into the next session (prepared or scheduled with the right focus) closes the loop between feedback and practice.
+
+---
+
+## 9. Settings and API keys
 
 **What it does.**
 - **API keys:** add several Google AI Studio keys with a name and project label. You can **test**, **disable** or **delete** each one.
 - **Models:** pick the text model for feedback. Free models only, unless you turn on the paid option.
 - **Paid usage** (off by default): unlocks Pro-class text models for coaching and feedback, after a confirmation dialog. Voice interviews always use the free Live model.
 - **Coaching interval** for Mode 2.
-- **Clear local data:** wipes sessions, keys, settings, saved words and scheduled interviews.
+- **Clear local data:** wipes sessions, keys, settings, saved words, scheduled interviews and Coach chats.
 
 **How it works.**
 - Keys are encrypted with Electron `safeStorage`, which uses Windows DPAPI, and kept in the main process only. If OS encryption is unavailable, the app refuses to store keys.
@@ -259,7 +294,7 @@ If no API key works yet, Setup offers a clearly labelled **Simulation mode**. It
 
 ---
 
-## 9. Theme, window and small things
+## 10. Theme, window and small things
 
 - **Light and dark theme** with a sun / moon switch in the title bar. It is remembered between launches, with no dark flash.
 - **Frameless window** with native Windows minimise, maximise and close buttons.

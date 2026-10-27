@@ -1,7 +1,8 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { BridgeService } from '../../core/bridge.service';
+import { CoachService } from '../../core/coach.service';
 import { localFeedback } from '../../core/feedback-local';
 import { Feedback, InterviewLanguage, SessionRecord, TranscriptEntry } from '../../core/interviewmate-api';
 import { SessionStateService } from '../../core/session-state.service';
@@ -18,6 +19,8 @@ type FeedbackSource = 'gemini' | 'local';
 export class FeedbackComponent implements OnInit {
   private readonly state = inject(SessionStateService);
   private readonly bridge = inject(BridgeService);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly coach = inject(CoachService);
 
   readonly session = signal<SessionRecord | null>(null);
   readonly feedback = signal<Feedback | null>(null);
@@ -37,9 +40,15 @@ export class FeedbackComponent implements OnInit {
   readonly pastSessions = computed(() => this.history().filter((s) => s.id !== this.session()?.id));
   readonly pendingRemove = signal<string | null>(null);
   readonly historyError = signal('');
+  /** Saved interview to expand (?open=<id>, used by the Coach). */
+  readonly openId = signal<string | null>(null);
 
   async ngOnInit(): Promise<void> {
-    void this.loadHistory();
+    this.route.queryParamMap.subscribe((q) => {
+      this.openId.set(q.get('open'));
+      if (this.openId()) setTimeout(() => this.scrollToOpen());
+    });
+    void this.loadHistory().then(() => this.scrollToOpen());
     const session = this.state.lastSession();
     this.session.set(session);
     if (!session) return;
@@ -123,6 +132,19 @@ export class FeedbackComponent implements OnInit {
     } finally {
       this.translating.set(false);
     }
+  }
+
+  /** Talk this interview through with the Coach (the current one, or a saved one). */
+  discuss(s?: SessionRecord): void {
+    if (s) { this.coach.discussInterview(s, true); return; }
+    const current = this.session();
+    if (current) this.coach.discussInterview({ ...current, feedback: this.feedback() ?? undefined }, this.saved());
+  }
+
+  private scrollToOpen(): void {
+    const id = this.openId();
+    if (!id) return;
+    setTimeout(() => document.getElementById(`hist-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   private async loadHistory(): Promise<void> {

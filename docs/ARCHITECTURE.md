@@ -46,6 +46,8 @@ This layer has full Node.js access and owns everything sensitive:
   - `vocab:*`
   - `words:*`
   - `schedule:*`
+  - `coach:*` (a Coach chat step, and voice transcription)
+  - `chats:*`
   - `reports:exportPdf`
   - `data:clearAll`
 - **Reminders:** a 20-second timer checks `schedule.json`. Due reminders trigger an Electron `Notification`, a taskbar flash, and an event to the page.
@@ -73,6 +75,8 @@ All model names live in one place: `FREE_MODELS` in `electron/services/gemini.cj
 |---|---|
 | Live voice interview | `gemini-3.8-live` → `gemini-3.1-flash-live-preview` |
 | Feedback, translation, report summary, coaching notes | selected text model → `gemini-3.8-flash` → `gemini-3.5-flash-lite` |
+| Coach chat (function calling) | selected text model → `gemini-3.8-flash` → `gemini-3.5-flash-lite`; later steps of one answer stay on the first model |
+| Coach voice input (transcription) | `gemini-3.5-flash-lite` → `gemini-3.8-flash` |
 | Vocabulary paragraphs and meanings (speed first) | `gemini-3.5-flash-lite` → `gemini-3.8-flash` |
 | Read-aloud (TTS) | `gemini-3.8-flash-tts` → `gemini-3.8-flash-lite-tts` → `gemini-3.1-flash-tts-preview` → Windows offline voice |
 
@@ -100,6 +104,20 @@ Paid models are only allowed when **Allow paid usage** is on in Settings. The ma
    - **Space/Enter:** sends `audioStreamEnd` and mutes the mic until the reply arrives.
 5. **Reconnects** use the session-resumption handle.
 
+### The Coach chat
+The Coach is a function-calling loop. The renderer runs the loop; the main process only validates and calls Gemini.
+
+1. `coach.service.ts` sends the history, the new message (plus hidden app context, such as which page you are on) and 14 function declarations from `coach-tools.ts` through `coach:turn`.
+2. `gemini.cjs` checks every part (only text, function calls and function responses; size and count limits; function names) and calls the text model with `toolConfig` AUTO and low thinking.
+3. If the reply contains function calls, `runCoachLoop` (`coach.ts`) runs each one:
+   - **reads** go straight to the bridge and return a compact, data-only result;
+   - **actions** are described by `describeAction`, shown as a card, and wait for **Confirm**; only then are they run.
+   The results go back as `functionResponse` parts. Model parts are sent back unchanged, so Gemini 3 thought signatures stay intact, and later steps are pinned to the same model.
+4. At most 6 model calls per message. If a call fails, the conversation is rolled back to before the message, so the history never holds half a turn.
+5. Replies are shown with a small, safe Markdown parser (paragraphs, lists, bold, italic, code). No HTML is inserted.
+
+Voice input: `MediaRecorder` → decoded and resampled to 16 kHz mono → WAV → `coach:transcribe` (60 s and size limits). Read-aloud reuses the Vocabulary speech service.
+
 ## Storage
 
 Everything is stored in Electron's `userData` folder, `%APPDATA%\interviewmate`:
@@ -111,6 +129,7 @@ Everything is stored in Electron's `userData` folder, `%APPDATA%\interviewmate`:
 | `sessions.json` | Saved interviews: setup, transcript, feedback, scores, translations | `session-store.cjs` |
 | `words.json` | Saved vocabulary words (max 500) | `word-store.cjs` |
 | `schedule.json` | Scheduled interviews with their full setup and reminder flags (max 50) | `schedule-store.cjs` |
+| `chats.json` | Coach chats: shown messages and the Gemini history (max 50 chats) | `chat-store.cjs` |
 
 The stores write atomically (to a temporary file, then rename), validate shapes on load, and cap their sizes. **Clear local data** deletes all of them.
 

@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, OnDestroy, signal, ViewChild } from '@angular/core';
+import { Component, effect, ElementRef, inject, OnDestroy, signal, untracked, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { cvSummaryText, extractName, summarizeCv } from '../../core/cv';
@@ -47,6 +47,8 @@ export class InterviewSetupComponent implements OnDestroy {
   readonly level = signal<InterviewLevel>('junior');
   readonly mode = signal<InterviewMode>(1);
   readonly role = signal('');
+  /** Optional area to practise (often filled in by the Coach). */
+  readonly focus = signal('');
   readonly candidateName = signal('');
   readonly answerMode = signal<'auto' | 'manual'>('auto');
   readonly pauseSec = signal(2.5);
@@ -77,6 +79,27 @@ export class InterviewSetupComponent implements OnDestroy {
   private vbgAttached = false;
 
   readonly formError = signal('');
+  private readonly flash = signal(false);
+  readonly prefilled = this.flash.asReadonly();
+
+  constructor() {
+    // The Coach's "prepare an interview" fills this form, even when it is already open.
+    effect(() => {
+      const d = this.state.setupDraft();
+      if (!d) return;
+      untracked(() => {
+        if (d.level) this.level.set(d.level);
+        if (d.role !== undefined) this.role.set(d.role);
+        if (d.durationMin) this.durationMin.set(d.durationMin);
+        if (d.language) { this.language.set(d.language); this.transcriptLanguage.set(d.language); }
+        if (d.answerMode) this.answerMode.set(d.answerMode);
+        if (d.focus !== undefined) this.focus.set(d.focus);
+        this.when.set('now');
+        this.flash.set(true);
+        this.state.setupDraft.set(null);
+      });
+    });
+  }
 
   ngOnDestroy(): void {
     this.stopTestTracks();
@@ -272,6 +295,7 @@ export class InterviewSetupComponent implements OnDestroy {
       level: this.level(),
       mode: this.mode(),
       role: this.role().trim(),
+      focus: this.focus().trim() || undefined,
       durationMin: this.durationMin(),
       language: this.language(),
       transcriptLanguage: this.transcriptLanguage(),

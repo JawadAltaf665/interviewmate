@@ -333,3 +333,60 @@ test('explainText: returns a meaning card for the selection', async () => {
   assert.equal(out.sayIt, 'prag-MAT-ik');
   await assert.rejects(c.explainText({ text: '', textModel: 'gemini-3.8-flash' }), /select a word/);
 });
+
+const COACH_TOOLS = [{ name: 'list_interviews', description: 'List saved interviews', parameters: { type: 'object', properties: {} } }];
+const COACH_CONTENTS = [{ role: 'user', parts: [{ text: 'What should I improve first?' }] }];
+
+test('coachTurn: sends system, tools and history; returns function calls with the signed content', async () => {
+  const sent = [];
+  const reply = { candidates: [{ finishReason: 'STOP', content: { role: 'model', parts: [
+    { functionCall: { name: 'list_interviews', args: { period: '30d' } }, thoughtSignature: 'sig-1' },
+  ] } }] };
+  const c = client(async (url, opts) => { sent.push({ url, body: JSON.parse(opts.body) }); return res(200, reply); }, creds(['k1', 'Key', 'AIza-a']));
+  const out = await c.coachTurn({ system: 'You are the coach.', contents: COACH_CONTENTS, tools: COACH_TOOLS, textModel: 'gemini-3.8-flash' });
+  assert.match(sent[0].url, /gemini-3\.8-flash:generateContent$/);
+  assert.equal(sent[0].body.systemInstruction.parts[0].text, 'You are the coach.');
+  assert.equal(sent[0].body.tools[0].functionDeclarations[0].name, 'list_interviews');
+  assert.deepEqual(out.functionCalls, [{ name: 'list_interviews', args: { period: '30d' } }]);
+  assert.equal(out.content.parts[0].thoughtSignature, 'sig-1', 'the signature is kept for the next step');
+  assert.equal(out.text, '');
+  assert.equal(out.model, 'gemini-3.8-flash');
+});
+
+test('coachTurn: falls back to the next model, but a pinned model never changes', async () => {
+  const urls = [];
+  const fetchImpl = async (url) => {
+    urls.push(url);
+    return url.includes('3.8-flash:') ? res(503, { error: { status: 'UNAVAILABLE', message: 'high demand' } }) : textRes('Focus on depth.');
+  };
+  const out = await client(fetchImpl, creds(['k1', 'Key', 'AIza-a'])).coachTurn({ contents: COACH_CONTENTS, tools: COACH_TOOLS, textModel: 'gemini-3.8-flash' });
+  assert.equal(out.text, 'Focus on depth.');
+  assert.equal(out.model, 'gemini-3.5-flash-lite');
+
+  urls.length = 0;
+  const pinned = client(fetchImpl, creds(['k1', 'Key', 'AIza-a']));
+  await assert.rejects(pinned.coachTurn({ contents: COACH_CONTENTS, tools: COACH_TOOLS, textModel: 'gemini-3.8-flash', pinModel: 'gemini-3.8-flash' }));
+  assert.ok(urls.every((u) => u.includes('3.8-flash:')), 'pinned: no other model was tried');
+  await assert.rejects(pinned.coachTurn({ contents: COACH_CONTENTS, tools: COACH_TOOLS, textModel: 'gemini-3.8-flash', pinModel: 'gemini-9-ultra' }), /not allowed/);
+});
+
+test('coachTurn: validates the conversation and tools, and reports an empty reply', async () => {
+  const c = client(async () => res(200, { candidates: [{ finishReason: 'SAFETY', content: { parts: [] } }] }), creds(['k1', 'Key', 'AIza-a']));
+  const call = (extra) => c.coachTurn({ contents: COACH_CONTENTS, tools: COACH_TOOLS, textModel: 'gemini-3.8-flash', ...extra });
+  await assert.rejects(call({ contents: [] }), /empty/);
+  await assert.rejects(call({ contents: [{ role: 'system', parts: [{ text: 'x' }] }] }), /role/);
+  await assert.rejects(call({ contents: [{ role: 'user', parts: [{ functionCall: { name: 'Bad Name' } }] }] }), /bad functionCall/);
+  await assert.rejects(call({ tools: [{ name: 'DROP TABLE' }] }), /bad tool name/);
+  await assert.rejects(call({ textModel: 'gemini-3.1-pro-preview' }), /paid|not allowed|free/i);
+  await assert.rejects(call({}), /empty reply \(SAFETY\)/);
+});
+
+test('transcribeAudio: returns the text and rejects long recordings', async () => {
+  let body = null;
+  const c = client(async (_u, opts) => { body = JSON.parse(opts.body); return textRes('How do I improve clarity?'); }, creds(['k1', 'Key', 'AIza-a']));
+  const out = await c.transcribeAudio({ audioBase64: 'UklGRg==' });
+  assert.equal(out.text, 'How do I improve clarity?');
+  assert.equal(body.contents[0].parts[1].inlineData.mimeType, 'audio/wav');
+  await assert.rejects(c.transcribeAudio({ audioBase64: '' }), /no recording/);
+  await assert.rejects(c.transcribeAudio({ audioBase64: 'A'.repeat(4_000_001) }), /too long/);
+});

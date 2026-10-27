@@ -8,6 +8,7 @@
     @if (session()) {
       <div class="row">
         <a class="btn secondary" routerLink="/setup">New interview</a>
+        <button class="btn secondary" type="button" (click)="discuss()" [disabled]="loading()" title="Talk this feedback through with the Coach">Discuss with Coach</button>
         <button class="btn" type="button" (click)="save()" [disabled]="saved() || loading()">
           {{ saved() ? 'Session saved' : 'Save session' }}
         </button>
@@ -134,7 +135,7 @@
     } @else {
       <div class="history-list">
         @for (s of pastSessions(); track s.id) {
-          <details class="history-item">
+          <details class="history-item" [id]="'hist-' + s.id" [open]="openId() === s.id">
             <summary>
               <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
               <span class="h-score" [class.none]="!s.feedback?.scores?.length">{{ s.feedback?.scores?.length ? overall(s.feedback) : '—' }}</span>
@@ -149,6 +150,7 @@
                   <button class="btn small secondary" type="button" (click)="pendingRemove.set(null)">Cancel</button>
                 </span>
               } @else {
+                <button class="btn small secondary" type="button" (click)="$event.preventDefault(); discuss(s)" title="Talk this interview through with the Coach">Discuss</button>
                 <button class="btn small danger" type="button" (click)="$event.preventDefault(); pendingRemove.set(s.id)" title="Remove this saved interview">Remove</button>
               }
             </summary>

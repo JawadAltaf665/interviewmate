@@ -62,7 +62,16 @@ If Windows notifications don't appear, turn them on in **Windows Settings → Sy
 4. Click an underlined word to see its meaning. Or select any word or sentence and press **Speak**, **Meaning** or **Save**.
 5. Turn on **Practise my saved words** to see your saved words again in new paragraphs.
 
-## 8. Troubleshooting
+## 8. Talk to the Coach
+
+1. Press **Ask Coach** (bottom right) on any page, or open the **Coach** tab. On **Feedback** or **Reports**, **Discuss with Coach** starts a chat about that interview or period.
+2. Type a question, or press the microphone, speak (up to 60 seconds), press it again, check the text and send. Good first questions: "What should I improve first?", "Make me a 7-day practice plan", "Ask me a practice question".
+3. When the Coach offers to do something (open a page, set up or schedule an interview, save words, export a PDF), a card appears. Nothing happens until you press its button; **Cancel** is always safe.
+4. **Listen** under a reply reads it aloud. The **+** button starts a new chat, and the clock button (or the Coach tab) shows earlier chats. Delete a chat with its bin icon.
+
+The Coach can't see your API keys, delete interviews, clear data or change settings: do those yourself in Settings or Feedback.
+
+## 9. Troubleshooting
 
 | Problem | What to do |
 |---|---|
